@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LabKnock 프로토타입</title>
+  <meta name="description" content="랩노크 · 연구실을 찾는 학부생과 학부연구생을 모집하는 연구실을 잇는 서비스 (수업 시연용, 가상 데이터)">
+  <meta name="theme-color" content="#3D5BD9">
+  <title>랩노크</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233D5BD9'/%3E%3Cpath d='M11 8v16h11' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="assets/components.css">
   <link rel="stylesheet" href="app.css">
 </head>
@@ -11,17 +14,9 @@
   <a class="skip-link" href="#view" data-skip>본문으로 건너뛰기</a>
   <header class="lk-header">
     <div class="lk-container lk-header__inner">
-      <a class="lk-brand" href="#/labs" data-home>LabKnock</a>
+      <a class="lk-brand" href="#/labs" data-home><span class="brand-mark" aria-hidden="true"></span>LabKnock</a>
       <nav class="lk-nav" id="nav" aria-label="주요 메뉴"></nav>
-      <label class="role-switch">
-        <span class="lk-caption">데모 계정</span>
-        <select id="role" class="lk-input role-switch__select">
-          <option value="visitor">방문자 (로그인 전)</option>
-          <option value="student">학생 · 가상 학생</option>
-          <option value="admin">연구실 관리자 · 지능형시스템</option>
-          <option value="pending">관리자 신청자 · 승인 대기</option>
-        </select>
-      </label>
+      <div class="account" id="account"></div>
     </div>
   </header>
   <main class="lk-main">
@@ -31,9 +26,11 @@
       <div id="view" tabindex="-1"></div>
     </div>
   </main>
-  <footer class="lk-container demo-footer">
-    <span class="lk-caption">가상 예시 데이터 · 서버 없이 화면 흐름만 보여주는 발표용 프로토타입 (SRS v1.3 UI-01~06)</span>
-    <button type="button" class="lk-link demo-reset" id="reset">데모 데이터 초기화</button>
+  <footer class="site-footer">
+    <div class="lk-container site-footer__inner">
+      <p class="lk-caption">랩노크 · 소프트웨어공학개론 팀 프로젝트 시연용 서비스 · 모든 인물·연구실·공고는 가상이며 실제 메일과 서버는 쓰지 않아요</p>
+      <button type="button" class="lk-link demo-reset" id="reset">데모 데이터 초기화</button>
+    </div>
   </footer>
 
   <dialog class="lk-dialog" id="dialog" aria-labelledby="dialog-title" aria-describedby="dialog-body">
@@ -47,6 +44,9 @@
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* LabKnock 발표용 프로토타입 화면 스타일. 공통 토큰(assets/tokens.css)만 사용한다. */
+/* LabKnock 화면 스타일. 공통 토큰(assets/tokens.css)만 사용한다. */
 body { min-height: 100dvh; display: flex; flex-direction: column; }
 .lk-main { flex: 1; }
 .lk-header__inner { justify-content: flex-start; }
@@ -7,8 +7,6 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
   content: ''; position: absolute; left: 0; right: 0; bottom: -10px; height: 3px;
   background: var(--lk-accent); border-radius: 2px;
 }
-.role-switch { margin-left: auto; display: flex; align-items: center; gap: var(--lk-space-2); }
-.role-switch__select { width: auto; min-height: var(--lk-control-height); padding-block: 8px; font-size: var(--lk-label-size); }
 .skip-link { position: absolute; left: var(--lk-space-4); top: -64px; z-index: 30; padding: var(--lk-space-2) var(--lk-space-4); border-radius: var(--lk-radius-control); background: var(--lk-accent); color: var(--lk-on-accent); font-weight: 600; text-decoration: none; }
 .skip-link:focus { top: var(--lk-space-2); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -125,8 +123,6 @@ textarea.lk-input { min-height: 180px; resize: vertical; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--lk-space-3); }
 .lk-dialog[open] { animation: dialog-in var(--lk-motion-dialog) var(--lk-ease-out); }
 @keyframes dialog-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
-.demo-footer { display: flex; justify-content: space-between; align-items: center; gap: var(--lk-space-4); padding-block: var(--lk-space-4) var(--lk-space-6); flex-wrap: wrap; }
-.demo-reset { font-size: var(--lk-caption-size); }
 
 @media (max-width: 1023px) {
   .split, .split--list { grid-template-columns: 1fr; }
@@ -137,11 +133,110 @@ textarea.lk-input { min-height: 180px; resize: vertical; }
   .search__input { grid-column: 1 / -1; }
   .filters, .form-grid, .field-grid, .review-filters { grid-template-columns: 1fr; }
   .toast { top: auto; bottom: var(--lk-space-4); }
-  .role-switch { margin-left: 0; width: 100%; }
-  .role-switch__select { flex: 1; }
   .lk-nav a[aria-current]::after { bottom: -4px; }
 }
 @media (hover: hover) and (pointer: fine) {
   .lab-name-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { .lk-dialog[open], .toast { animation: none; } }
+
+/* ---------- 머리글: 로고·계정 ---------- */
+.lk-brand { display: inline-flex; align-items: center; gap: var(--lk-space-2); }
+.brand-mark { width: 28px; height: 28px; border-radius: var(--lk-radius-control); background: var(--lk-accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M11 8v16h11' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; flex: none; }
+.account { margin-left: auto; display: flex; align-items: center; gap: var(--lk-space-2); }
+.account-menu { position: relative; }
+.account-btn { display: inline-flex; align-items: center; gap: var(--lk-space-2); min-height: var(--lk-control-height); padding: 4px 8px 4px 4px; border: 1px solid var(--lk-border); border-radius: 999px; background: var(--lk-surface); color: var(--lk-text); font: inherit; cursor: pointer; max-width: 260px; }
+.account-btn[aria-expanded='true'] { border-color: var(--lk-accent); }
+.account-btn__avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--lk-accent-soft); color: var(--lk-accent); font-weight: 700; font-size: var(--lk-label-size); flex: none; }
+.account-btn__text { display: grid; text-align: left; min-width: 0; }
+.account-btn__name { font-size: var(--lk-label-size); line-height: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-btn__role { font-size: var(--lk-caption-size); line-height: 16px; color: var(--lk-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.account-btn__chev { color: var(--lk-text-muted); flex: none; }
+.account-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 25; min-width: 240px; padding: var(--lk-space-2); background: var(--lk-surface); border-radius: var(--lk-radius-panel); box-shadow: var(--lk-shadow-overlay); display: grid; gap: 2px; transform-origin: top right; animation: pop-in var(--lk-motion-popover) var(--lk-ease-out); }
+.account-pop__who { display: grid; padding: var(--lk-space-2) var(--lk-space-3) var(--lk-space-3); border-bottom: 1px solid var(--lk-border); margin-bottom: var(--lk-space-1); }
+.account-pop__menu { display: grid; gap: 2px; }
+.account-pop [role='menuitem'] { display: flex; align-items: center; min-height: var(--lk-control-height); padding: 0 var(--lk-space-3); border: 0; border-radius: var(--lk-radius-control); background: none; color: var(--lk-text); font: 500 var(--lk-label-size)/var(--lk-label-line) var(--lk-font); text-decoration: none; text-align: left; cursor: pointer; }
+.account-pop [role='menuitem'][aria-current] { color: var(--lk-accent); font-weight: 650; }
+.account-pop [role='menuitem']:focus-visible { outline-offset: -2px; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ---------- 바닥글 ---------- */
+.site-footer { border-top: 1px solid var(--lk-border); background: var(--lk-surface); }
+.site-footer__inner { display: flex; justify-content: space-between; align-items: center; gap: var(--lk-space-2) var(--lk-space-6); padding-block: var(--lk-space-4); flex-wrap: wrap; }
+.demo-reset { font-size: var(--lk-caption-size); }
+
+/* ---------- 계정: 로그인·가입 ---------- */
+.auth { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 360px); gap: var(--lk-space-6); justify-content: center; align-items: start; }
+.auth--single { grid-template-columns: minmax(0, 520px); }
+.auth__card { display: grid; gap: var(--lk-space-2); padding: var(--lk-space-8); }
+.auth__form { display: grid; gap: var(--lk-space-6); margin-top: var(--lk-space-4); }
+.auth__submit { width: 100%; min-height: 48px; font-size: var(--lk-body-size); }
+.auth__alt { margin-top: var(--lk-space-4); text-align: center; color: var(--lk-text-secondary); font-size: var(--lk-description-size); }
+.auth .notice { margin-top: var(--lk-space-3); }
+.auth__demo { display: grid; gap: var(--lk-space-3); }
+.demo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--lk-space-2); }
+.demo-account { width: 100%; display: grid; gap: 2px; text-align: left; padding: var(--lk-space-3) var(--lk-space-4); border: 1px solid var(--lk-border); border-radius: var(--lk-radius-control); background: var(--lk-surface); color: var(--lk-text); font: inherit; cursor: pointer; min-height: 64px; }
+.demo-account__role { font-weight: 650; font-size: var(--lk-label-size); }
+.demo-account__desc { font-size: var(--lk-description-size); color: var(--lk-text-secondary); }
+.demo-account:disabled { color: var(--lk-text-muted); cursor: progress; }
+.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; padding: 1px 6px; border-radius: 6px; background: var(--lk-surface-muted); color: var(--lk-text); white-space: nowrap; }
+.form-error { padding: var(--lk-space-3) var(--lk-space-4); border-radius: var(--lk-radius-control); background: var(--lk-danger-soft); color: var(--lk-danger); font-size: var(--lk-label-size); line-height: var(--lk-body-line); }
+.choice-group { border: 0; padding: 0; margin: 0; display: grid; gap: var(--lk-space-2); }
+.choice-group legend { margin-bottom: var(--lk-space-2); }
+.choice { display: flex; gap: var(--lk-space-3); align-items: flex-start; padding: var(--lk-space-3) var(--lk-space-4); border: 1px solid var(--lk-control-border); border-radius: var(--lk-radius-control); cursor: pointer; background: var(--lk-surface); }
+.choice input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--lk-accent); flex: none; }
+.choice > span { display: grid; gap: 2px; }
+.choice__title { font-weight: 600; }
+.choice__desc { font-size: var(--lk-description-size); color: var(--lk-text-secondary); }
+.choice:has(input:checked) { border-color: var(--lk-accent); background: var(--lk-accent-soft); }
+.choice-group[aria-invalid='true'] .choice { border-color: var(--lk-danger); }
+.check { display: flex; gap: var(--lk-space-3); align-items: flex-start; min-height: var(--lk-control-height); cursor: pointer; font-weight: 500; }
+.check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--lk-accent); flex: none; }
+.check:has(input[aria-invalid='true']) span { color: var(--lk-danger); }
+
+/* ---------- 계정: 이메일·메일함·내 정보·인증 ---------- */
+.narrow { max-width: 720px; }
+.empty-actions { margin-top: var(--lk-space-4); display: flex; gap: var(--lk-space-3); justify-content: center; flex-wrap: wrap; }
+.mail-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--lk-space-4); max-width: 720px; }
+.mail__head { display: flex; justify-content: space-between; gap: var(--lk-space-4); align-items: flex-start; padding-bottom: var(--lk-space-3); border-bottom: 1px solid var(--lk-border); }
+.mail__from { font-weight: 600; font-size: var(--lk-label-size); }
+.mail__body { display: grid; gap: var(--lk-space-3); padding-top: var(--lk-space-4); font-size: var(--lk-description-size); }
+.account-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: var(--lk-space-6); align-items: start; }
+.stack-form { display: grid; gap: var(--lk-space-6); }
+#profile .stack-form { margin-top: var(--lk-space-4); }
+.readonly-value { min-height: var(--lk-control-height); display: flex; align-items: center; flex-wrap: wrap; gap: var(--lk-space-2); padding: var(--lk-space-2) var(--lk-space-3); border-radius: var(--lk-radius-control); background: var(--lk-surface-muted); color: var(--lk-text); font-size: var(--lk-description-size); }
+.readonly-value[aria-invalid='true'] { box-shadow: inset 0 0 0 1px var(--lk-danger); }
+.callout { padding: var(--lk-space-3) var(--lk-space-4); border-left: 4px solid var(--lk-warning); border-radius: var(--lk-radius-control); background: var(--lk-warning-soft); display: grid; gap: var(--lk-space-1); font-size: var(--lk-description-size); }
+.verif-grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--lk-aside-width); gap: var(--lk-space-6); align-items: start; }
+.req-list { list-style: none; margin: var(--lk-space-3) 0 0; padding: 0; display: grid; gap: var(--lk-space-3); }
+.req-list li { display: grid; gap: 4px; padding-top: var(--lk-space-3); border-top: 1px solid var(--lk-border); }
+.req-list li:first-child { border-top: 0; padding-top: 0; }
+.review-filters--one { grid-template-columns: minmax(0, 260px); }
+#vr-proof-box[aria-invalid='true'], .file-box[aria-invalid='true'] { border-color: var(--lk-danger); }
+
+@media (max-width: 1023px) {
+  .account-grid, .verif-grid { grid-template-columns: 1fr; }
+  .auth { grid-template-columns: minmax(0, 520px); }
+}
+@media (max-width: 767px) {
+  .auth__card { padding: var(--lk-space-6) var(--lk-space-4); }
+  .account { margin-left: auto; }
+  /* 좁은 화면에서는 이름을 감추되 화면 낭독기에는 버튼 이름으로 남긴다 (NFR-07·08) */
+  .account-btn__text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .account-btn { padding: 4px; }
+  .account-btn__chev { display: none; }
+  .account .small-btn { padding-inline: 10px; }
+  .mail__head { flex-direction: column; gap: var(--lk-space-1); }
+  /* 모바일 머리글: 첫 줄 로고·계정, 둘째 줄 메뉴 */
+  .lk-header__inner { row-gap: 0; }
+  .lk-brand { order: 1; }
+  .account { order: 2; }
+  .lk-nav { order: 3; width: 100%; }
+}
+@media (max-width: 359px) { .account .signup-link { display: none; } }
+@media (hover: hover) and (pointer: fine) {
+  .demo-account:hover:not(:disabled), .account-btn:hover { background: var(--lk-canvas); }
+  .account-pop [role='menuitem']:hover { background: var(--lk-surface-muted); }
+  .choice:hover { border-color: var(--lk-accent); }
+}
+@media (prefers-reduced-motion: reduce) { .account-pop { animation: none; } }

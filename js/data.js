@@ -162,6 +162,7 @@ const api = {
         if (/database error/i.test(error.message)) return { ok: false, errors: [['email', 'skku.edu 또는 g.skku.edu로 끝나는 학교 이메일만 가입할 수 있어요.']] };
         if (/password/i.test(error.message)) return { ok: false, errors: [['password', '비밀번호는 12~72자로 입력해주세요.']] };
         if (/rate limit|security purposes/i.test(error.message)) return { ok: false, errors: [['email', '확인 메일을 너무 자주 요청했어요. 잠시 뒤 다시 시도해주세요.']] };
+        if (/sending|email|unexpected/i.test(error.message) || error.status >= 500) return { ok: false, errors: [['email', '확인 메일을 보내지 못했어요. 메일 서버 문제일 수 있어요. 잠시 뒤 같은 주소로 다시 가입하면 확인 메일을 다시 보내요.']] };
         return { ok: false, errors: [['email', '가입하지 못했어요. 잠시 뒤 다시 시도해주세요.']] };
       }
       // 이미 가입된 주소면 Supabase는 빈 계정 정보를 돌려준다
@@ -210,7 +211,7 @@ const api = {
       const { error } = await SB.auth.resend({ type: 'signup', email: e, options: { emailRedirectTo: LK_CONFIG.site } });
       if (error) {
         const m = /after (\d+) seconds/.exec(error.message);
-        return { ok: false, message: m ? `새 확인 메일은 ${m[1]}초 뒤에 보낼 수 있어요.` : '확인 메일을 보내지 못했어요. 잠시 뒤 다시 시도해주세요.' };
+        return { ok: false, message: m ? `새 확인 메일은 ${m[1]}초 뒤에 보낼 수 있어요.` : '확인 메일을 보내지 못했어요. 메일 서버 문제일 수 있어요. 잠시 뒤 다시 시도해주세요.' };
       }
       markSent(e);
       return { ok: true };

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LabKnock 프로토타입</title>
+  <link rel="stylesheet" href="assets/components.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="lk-app">
+  <a class="skip-link" href="#view" data-skip>본문으로 건너뛰기</a>
+  <header class="lk-header">
+    <div class="lk-container lk-header__inner">
+      <a class="lk-brand" href="#/labs" data-home>LabKnock</a>
+      <nav class="lk-nav" id="nav" aria-label="주요 메뉴"></nav>
+      <label class="role-switch">
+        <span class="lk-caption">데모 계정</span>
+        <select id="role" class="lk-input role-switch__select">
+          <option value="visitor">방문자 (로그인 전)</option>
+          <option value="student">학생 · 가상 학생</option>
+          <option value="admin">연구실 관리자 · 지능형시스템</option>
+          <option value="pending">관리자 신청자 · 승인 대기</option>
+        </select>
+      </label>
+    </div>
+  </header>
+  <main class="lk-main">
+    <div class="lk-container">
+      <div id="toast" class="toast" aria-hidden="true" hidden></div>
+      <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+      <div id="view" tabindex="-1"></div>
+    </div>
+  </main>
+  <footer class="lk-container demo-footer">
+    <span class="lk-caption">가상 예시 데이터 · 서버 없이 화면 흐름만 보여주는 발표용 프로토타입 (SRS v1.3 UI-01~06)</span>
+    <button type="button" class="lk-link demo-reset" id="reset">데모 데이터 초기화</button>
+  </footer>
+
+  <dialog class="lk-dialog" id="dialog" aria-labelledby="dialog-title" aria-describedby="dialog-body">
+    <form method="dialog" class="dialog-form">
+      <h2 class="lk-item-title" id="dialog-title"></h2>
+      <div class="dialog-body" id="dialog-body"></div>
+      <div class="dialog-actions">
+        <button class="lk-button lk-button--secondary" value="cancel" id="dialog-cancel">취소</button>
+        <button class="lk-button" value="ok" id="dialog-ok">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

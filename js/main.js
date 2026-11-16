@@ -322,9 +322,13 @@ $('#reset').addEventListener('click', async () => {
 (async () => {
   const qs = new URLSearchParams(location.search);
   const tokenHash = qs.get('token_hash');
-  if (tokenHash) {
+  // Supabase 기본 확인 메일은 확인을 끝낸 뒤 주소 뒤(#)에 로그인 토큰이나 오류를 붙여 돌려보낸다
+  const hs = /^#(access_token|error)=/.test(location.hash) ? new URLSearchParams(location.hash.slice(1)) : null;
+  if (tokenHash || hs) {
     $('#view').innerHTML = panelMsg('학교 이메일을 확인하고 있어요.', '잠시만 기다려주세요.');
-    const res = await api.verifyEmailLink(tokenHash);
+    const res = tokenHash ? await api.verifyEmailLink(tokenHash)
+      : hs.get('access_token') ? await api.acceptEmailSession(hs.get('access_token'), hs.get('refresh_token'))
+        : { ok: false, code: 'expired' };
     // 확인 토큰이 주소창·방문 기록에 남지 않게 지운다
     history.replaceState(null, '', `${location.pathname}#/verify-email?result=${res.ok ? 'ok' : res.code}`);
   }

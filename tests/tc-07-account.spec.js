@@ -1,6 +1,6 @@
 // 계정: 실제 확인 메일로 가입(TC-07-01~03), 학교 메일만(TC-07-02), 로그인 5회 실패 제한(NFR-06)
 const { test, expect } = require('@playwright/test');
-const { open, resetDemo, latestConfirmLink } = require('./helpers');
+const { open, resetDemo, latestConfirmLink, adminLink } = require('./helpers');
 
 test.beforeEach(async () => { await resetDemo(); });
 
@@ -53,4 +53,13 @@ test('NFR-06 5번 연속 틀리면 맞는 비밀번호도 15분 동안 거절한
   await page.click('#li-submit');
   await expect(page.locator('#li-form-err')).toContainText('5번 연속 틀리면');
   await expect(page.locator('#account-btn')).toHaveCount(0);
+});
+
+test('TC-07-03 Supabase 기본 확인 메일 링크(주소 뒤 # 토큰)로도 확인과 로그인이 끝난다', async ({ page }) => {
+  const email = `default-${Date.now()}@g.skku.edu`;
+  const link = await adminLink(email, 'labknock-test-pass');
+  await page.goto(link);
+  await expect(page.locator('#view')).toContainText('학교 이메일을 확인했어요');
+  expect(page.url()).not.toContain('access_token');
+  await expect(page.locator('#account-btn')).toBeVisible();
 });

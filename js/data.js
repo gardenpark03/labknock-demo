@@ -229,6 +229,18 @@ const api = {
     } catch { return { ok: false, code: 'network' }; }
   },
 
+  // 기본 확인 메일: Supabase가 확인을 끝내고 돌려준 로그인 토큰으로 세션을 연다
+  async acceptEmailSession(accessToken, refreshToken) {
+    try {
+      const { data, error } = await SB.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (error || !data.user) return { ok: false, code: 'expired' };
+      startSession(data.user.id);
+      await syncState();
+      announce();
+      return { ok: true };
+    } catch { return { ok: false, code: 'network' }; }
+  },
+
   // 역할별 프로필 보완·수정 (4.7.1, FR-07-05·06)
   async saveProfile({ name, grade, declaration }) {
     const u = currentUser();

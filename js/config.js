@@ -5,4 +5,4 @@
 const LK_LOCAL = ['127.0.0.1', 'localhost'].includes(location.hostname);
 const LK_CONFIG = LK_LOCAL
   ? { url: 'http://127.0.0.1:54321', anonKey: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH', site: `${location.origin}${location.pathname.replace(/index\.html$/, '')}` }
-  : { url: 'https://PROJECT_REF.supabase.co', anonKey: 'PUBLISHABLE_KEY', site: 'https://gardenpark03.github.io/labknock-demo/' };
+  : { url: 'https://kfyencsyzjrfwcvsjumh.supabase.co', anonKey: 'sb_publishable_4IZsZ2LvnOu62ImOwd5NvQ_pYun_4qV', site: 'https://gardenpark03.github.io/labknock-demo/' };

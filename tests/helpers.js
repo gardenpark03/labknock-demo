@@ -79,4 +79,12 @@ async function latestConfirmLink(email) {
   throw new Error(`${email}로 온 확인 메일이 없어요`);
 }
 
-module.exports = { open, settle, loginAs, logout, confirmDialog, resetDemo, latestConfirmLink, SAMPLE_PDF, API };
+/** 기본 양식 확인 메일과 같은 형식의 가입 확인 링크를 관리 API로 만든다 (로컬 전용). */
+async function adminLink(email, password) {
+  const r = await fetch(`${API}/auth/v1/admin/generate_link`, { method: 'POST', headers: { apikey: localSecret(), Authorization: `Bearer ${localSecret()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'signup', email, password, data: { role: 'student' }, redirect_to: 'http://127.0.0.1:4173/' }) });
+  const body = await r.json();
+  if (!body.action_link) throw new Error(`generate_link 실패: ${JSON.stringify(body)}`);
+  return body.action_link;
+}
+
+module.exports = { adminLink, open, settle, loginAs, logout, confirmDialog, resetDemo, latestConfirmLink, SAMPLE_PDF, API };

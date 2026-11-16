@@ -48,22 +48,27 @@ document.addEventListener('click', (e) => {
   go(a.getAttribute('href'));
 });
 window.addEventListener('beforeunload', (e) => { if (guard) { e.preventDefault(); e.returnValue = ''; } });
-// 다른 탭에서 데이터가 바뀌면(예: 관리자 탭에서 심사) 이 탭도 최신 상태로 다시 그린다
-window.addEventListener('storage', (e) => {
-  if (e.key !== STORE_KEY) return;
-  S = load();
+// 다른 탭에서 데이터를 바꿨거나(예: 관리자 탭에서 심사) 이 탭으로 돌아오면 서버에서 최신 상태를 받아 다시 그린다
+const canRefresh = () => {
   const pop = $('#account-pop');
-  if (guard || $('#dialog').open || (pop && !pop.hidden) || document.querySelector('[aria-busy="true"]')) return;
+  if (guard || $('#dialog').open || (pop && !pop.hidden) || document.querySelector('[aria-busy="true"]')) return false;
   // 검색어·로그인 정보처럼 저장 보호가 없는 입력도 입력하는 동안에는 다시 그려 지우지 않는다
-  if (document.activeElement && document.activeElement.matches('#view input:not([type="radio"]):not([type="checkbox"]), #view textarea')) return;
+  return !(document.activeElement && document.activeElement.matches('#view input:not([type="radio"]):not([type="checkbox"]), #view textarea'));
+};
+async function backgroundRefresh() {
+  if (!canRefresh()) return;
+  try { await syncState(); } catch { return; }
+  if (!canRefresh()) return;
   // 다시 그려도 펼친 질문과 아직 적용하지 않은 검색어는 그대로 둔다
   const opened = $$('#view details[open]').map((d) => d.id).filter(Boolean);
   const typed = $$('#view input[type="text"], #view input[type="search"], #view input[type="email"], #view input:not([type])').filter((i) => i.id && i.value !== i.defaultValue).map((i) => [i.id, i.value]);
   bgRender = true;
-  try { render(); } finally { bgRender = false; }
+  try { paint(); } finally { bgRender = false; }
   opened.forEach((id) => { const d = document.getElementById(id); if (d) d.open = true; });
   typed.forEach(([id, v]) => { const i = document.getElementById(id); if (i) i.value = v; });
-});
+}
+if (channel) channel.addEventListener('message', backgroundRefresh);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') backgroundRefresh(); });
 
 // ---------- 머리글 ----------
 function navItems(u) {
@@ -96,6 +101,7 @@ function footerCols(u) {
   return cols;
 }
 function renderFooter(u) {
+  $('#reset').hidden = !(u && u.role === 'operator');
   $('#footer-nav').innerHTML = footerCols(u).map(([title, links], i) => `
     <div class="footer-col"><h2 class="footer-col__title" id="footer-col-${i}">${title}</h2>
       <ul aria-labelledby="footer-col-${i}">${links.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join('')}</ul></div>`).join('');
@@ -114,7 +120,6 @@ function renderHeader(active, u) {
     ['#/account', '내 정보'],
     ...(!u.emailVerifiedAt ? [['#/account/email', '이메일 확인']] : []),
     ...(u.role === 'admin' ? [['#/verification', '연구실 소속 인증']] : []),
-    ['#/mailbox', '가상 메일함'],
   ];
   box.innerHTML = `
     <div class="account-menu">
@@ -148,7 +153,7 @@ function renderHeader(active, u) {
   $('#logout').addEventListener('click', async () => {
     closeAccountMenu(true);
     if (!(await confirmLeave())) return;
-    api.logout();
+    await api.logout();
     go('#/', { replace: true });   // 로그아웃은 탐색 조건도 지운다 (FR-01-07.3)
     toast('로그아웃했어요.');
   });
@@ -168,7 +173,29 @@ document.addEventListener('click', (e) => { if (!e.target.closest('.account-menu
 // ---------- 화면 전환 ----------
 // 화면이 바뀌면 맨 위로 올리고 제목에 포커스, 목록 선택만 바뀌면 상세 제목으로, 같은 화면이면 포커스를 되살린다
 let prevView = { path: null, key: null };
-function render() {
+let renderSeq = 0;
+let renderStartedAt = 0;
+// 서버에서 받는 동안 html에 data-rendering을 달아 둔다 (자동 시험이 화면이 다 그려질 때까지 기다리는 데 쓴다)
+async function render() {
+  const t = ++renderSeq;
+  const startedAt = Date.now();
+  const root = document.documentElement;
+  root.setAttribute('data-rendering', '');
+  try { await syncState(); } catch {
+    if (t !== renderSeq) return;
+    root.removeAttribute('data-rendering');
+    if (!loaded) {
+      $('#view').innerHTML = panelMsg('서버에 연결할 수 없어요.', '인터넷 연결을 확인한 뒤 다시 시도해주세요.', '<button class="lk-button" type="button" id="retry">다시 시도</button>');
+      $('#retry').addEventListener('click', () => render());
+      return;
+    }
+    toast('서버에 연결하지 못해 마지막으로 받은 내용을 보여 줘요.', true);
+  }
+  if (t !== renderSeq) return;
+  renderStartedAt = startedAt;
+  try { paint(); } finally { root.removeAttribute('data-rendering'); }
+}
+function paint() {
   const activeId = document.activeElement && document.activeElement.id;
   renderView();
   const { parts, q } = parseHash();
@@ -221,14 +248,14 @@ function render() {
   prevView = { path, key };
 }
 
-const PROTECTED = ['apply', 'my', 'account', 'verify-email', 'mailbox', 'verification', 'admin', 'ops'];
-const TITLES = { labs: '연구실 탐색', lab: '연구실 상세', apply: '지원서 작성', my: '내 지원 현황', login: '로그인', signup: '회원가입', account: '내 정보', email: '학교 이메일 확인', 'verify-email': '학교 이메일 확인', mailbox: '가상 메일함', verification: '연구실 소속 인증', recruitments: '모집 공고 관리', applicants: '지원자 관리', verifications: '인증 요청 검토' };
+const PROTECTED = ['apply', 'my', 'account', 'verification', 'admin', 'ops'];
+const TITLES = { labs: '연구실 탐색', lab: '연구실 상세', apply: '지원서 작성', my: '내 지원 현황', login: '로그인', signup: '회원가입', account: '내 정보', email: '학교 이메일 확인', 'verify-email': '학교 이메일 확인', 'check-email': '학교 이메일 확인', verification: '연구실 소속 인증', recruitments: '모집 공고 관리', applicants: '지원자 관리', verifications: '인증 요청 검토' };
 
 function renderView() {
   clearPageTimers();
   closeAccountMenu();
   lastHash = location.hash || '#/';
-  if (!bgRender) $('#toast').hidden = true;
+  if (!bgRender && toastAt < renderStartedAt) $('#toast').hidden = true;
   guard = null;
   const { parts, q } = parseHash();
   const view = $('#view');
@@ -263,7 +290,7 @@ function renderView() {
       if (sub) break;
       renderHeader('#/account', u); return viewAccount(view, q, u);
     case 'verify-email': renderHeader('', u); return viewVerifyEmail(view, q, u);
-    case 'mailbox': renderHeader('#/mailbox', u); return viewMailbox(view, u);
+    case 'check-email': renderHeader('', u); return viewCheckEmail(view, q);
     case 'verification': renderHeader('#/verification', u); return isAdmin(u) ? viewVerification(view, u) : notAllowed(view, u);
     case 'admin':
       if (sub !== 'recruitments' && sub !== 'applicants') break;
@@ -282,14 +309,25 @@ function renderView() {
 }
 
 $('#reset').addEventListener('click', async () => {
-  const ok = await confirmDialog({ title: '데모 데이터를 초기화할까요?', body: '<p>가입한 계정, 제출·심사·공고 변경, 인증 요청과 가상 메일이 모두 처음 상태로 돌아가요. 로그인도 풀려요.</p>', ok: '초기화', danger: true });
+  const ok = await confirmDialog({ title: '데모 데이터를 초기화할까요?', body: '<p>모든 사용자에게 공고·지원·심사·인증 요청이 처음 상태로 돌아가요. 데모 계정 4개도 처음 상태가 돼요. 직접 가입한 계정은 남지만 그 계정의 지원과 인증 요청은 지워져요.</p>', ok: '초기화', danger: true });
   if (!ok) return;
   guard = null;
-  await resetAll();
+  const res = await busy($('#reset'), '초기화 중…', () => api.resetDemo());
+  if (!res.ok) { toast(res.message, true); return; }
   go('#/', { replace: true });
   toast('데모 데이터를 처음 상태로 되돌렸어요.');
 });
 
 // 주소 없이 열면 홈 주소(#/)로 맞춰, 로고를 눌러도 같은 화면이 이력에 한 번 더 쌓이지 않게 한다
-if (!location.hash) history.replaceState(null, '', '#/');
-render();
+(async () => {
+  const qs = new URLSearchParams(location.search);
+  const tokenHash = qs.get('token_hash');
+  if (tokenHash) {
+    $('#view').innerHTML = panelMsg('학교 이메일을 확인하고 있어요.', '잠시만 기다려주세요.');
+    const res = await api.verifyEmailLink(tokenHash);
+    // 확인 토큰이 주소창·방문 기록에 남지 않게 지운다
+    history.replaceState(null, '', `${location.pathname}#/verify-email?result=${res.ok ? 'ok' : res.code}`);
+  }
+  if (!location.hash) history.replaceState(null, '', '#/');
+  render();
+})();

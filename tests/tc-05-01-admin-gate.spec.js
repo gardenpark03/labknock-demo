@@ -1,6 +1,8 @@
 // TC-05-01 (FR-05-01): 소속 인증이 승인되기 전의 관리자 신청자는 공고를 만들 수 없고 인증 안내를 본다.
 const { test, expect } = require('@playwright/test');
-const { open, loginAs } = require('./helpers');
+const { open, loginAs, resetDemo } = require('./helpers');
+
+test.beforeEach(async () => { await resetDemo(); });
 
 test('TC-05-01 승인 대기 신청자는 모집 공고 관리 대신 인증 안내를 본다', async ({ page }) => {
   await loginAs(page, '관리자 신청자');

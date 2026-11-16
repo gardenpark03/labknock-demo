@@ -115,7 +115,7 @@ function wireFileField(key, maxBytes, state, onChange) {
   paint();
 }
 
-// 첨부 링크: 미리 넣은 가상 지원서는 예시 PDF로, 새로 제출한 지원서는 이 브라우저에 보관한 파일로 연다
+// 첨부 링크: 미리 넣은 가상 지원서는 예시 PDF로, 새로 제출한 지원서는 서버(Storage)에 올린 파일로 연다
 const SAMPLE_FILES = { 'CV.pdf': 'assets/samples/sample-cv.pdf', '성적증명서.pdf': 'assets/samples/sample-transcript.pdf' };
 function fileLinks(key, a) {
   if (!a.files.length) return '없음';
@@ -124,13 +124,13 @@ function fileLinks(key, a) {
     if (/^https:/.test(name)) return `<a class="lk-link" href="${esc(name)}" target="_blank" rel="noopener noreferrer">포트폴리오 링크 열기</a>`;
     if (a.sample && SAMPLE_FILES[name]) return `<a class="lk-link" href="${SAMPLE_FILES[name]}" target="_blank" rel="noopener">${esc(name)} 보기</a>`;
     const slot = typeof f === 'string' ? f : f.slot;
-    const fileId = a.fileKey ? `file:${a.fileKey}:${slot}` : `app:${key}:${slot}`;
-    return `<a class="lk-link" href="#" data-file="${esc(fileId)}" data-name="${esc(name)}" aria-disabled="true">${esc(name)} 보기</a>`;
+    if (!a.fileKey || !a.studentId) return esc(name);
+    return `<a class="lk-link" href="#" data-file="${esc(filePath(a.studentId, a.fileKey, slot))}" data-name="${esc(name)}" aria-disabled="true">${esc(name)} 보기</a>`;
   }).join(' · ');
 }
 const proofLink = (r) => (r.sample
   ? `<a class="lk-link" href="${r.sample}" target="_blank" rel="noopener">${esc(r.proof)} 보기</a>`
-  : `<a class="lk-link" href="#" data-file="${r.fileKey ? `file:${esc(r.fileKey)}` : `vr:${r.id}`}" data-name="${esc(r.proof)}" aria-disabled="true">${esc(r.proof)} 보기</a>`);
+  : r.fileKey ? `<a class="lk-link" href="#" data-file="${esc(filePath(r.requesterId, r.fileKey, 'proof'))}" data-name="${esc(r.proof)}" aria-disabled="true">${esc(r.proof)} 보기</a>` : esc(r.proof));
 
 // ---------- 홈 (SRS 화면 목록 밖의 소개 화면) ----------
 // 처음 온 사람이 서비스와 진행 방식을 이해하고 탐색(UI-01)으로 들어가게 한다.
@@ -546,35 +546,16 @@ function viewApply(view, recId, u) {
     const pick = { cv: f.cv, grade: f.grade, pf: f.pfMode === 'pdf' ? f.pf : null };
     const linkVal = f.pfMode === 'link' ? f.link.trim() : '';
     const applyHash = location.hash;
-    let outcome = null; let latest = null; let newKey = null;
-    await busy($('#submit'), '제출 중…', async () => {
-      await sleep(LATENCY * 2);
-      const fileKey = randomHex(8);
-      const files = [];
-      for (const slot of ['cv', 'grade', 'pf']) {
-        if (pick[slot]) { await FileStore.put(`file:${fileKey}:${slot}`, pick[slot]); files.push({ slot, name: pick[slot].name }); }
-      }
-      if (linkVal) files.push(linkVal);
-      // 기다린 뒤 현재 저장소 기준으로 다시 검사하고 접수번호 발급과 저장을 한 번에 확정한다
-      const me = sameUser(u);
-      if (!me) { outcome = 'login'; return; }
-      const dup = myAppFor(me, recId);
-      if (dup) { outcome = 'dup'; newKey = Object.keys(S.apps).find((k) => S.apps[k] === dup); return; }
-      if (recStatus(S.recs[recId]) !== '모집 중') { outcome = 'closed'; return; }
-      if (!me.emailVerifiedAt || !profileComplete(me)) { outcome = 'profile'; return; }
-      // 화면에서 확인한 프로필과 저장될 프로필이 다르면 다시 확인받는다 (FR-03-05.3)
-      if (me.name !== shown.name || Number(me.grade) !== Number(shown.grade)) { outcome = 'changed'; latest = me; return; }
-      S.seq += 1;
-      newKey = `A0${S.seq}`;
-      const at = nowIso();
-      // 제출 당시 프로필(이름·학교 이메일·학과·학년)을 함께 저장한다 (6.2.4 profileSnapshot)
-      S.apps[newKey] = { id: `A-0${S.seq}`, rec: recId, studentId: me.id, student: me.name, email: me.email, dept: me.department, year: me.grade, sample: false, fileKey, intro: introVal, course: courseVal, files, submittedAt: at, history: [['지원 완료', at]] };
-      touch(); save(); outcome = 'ok';
-    });
+    // 파일을 올린 뒤 서버가 자격·중복·모집 상태·프로필을 다시 검사하고, 접수번호 발급과 저장을 한 번에 확정한다
+    // 제출 당시 프로필(이름·학교 이메일·학과·학년)을 함께 저장한다 (6.2.4 profileSnapshot)
+    const res = await busy($('#submit'), '제출 중…', () => api.submitApplication({ recId, intro: introVal, course: courseVal, pick, link: linkVal, shown }));
+    const outcome = res.ok ? 'ok' : res.code;
+    const newKey = res.key;
+    const latest = res.latest;
     if (outcome === 'ok') {
       guard = null;
       if (location.hash === applyHash) go(`#/my?app=${newKey}`);
-      toast(`지원서를 제출했어요. 접수번호 ${S.apps[newKey].id}`);
+      toast(`지원서를 제출했어요. 접수번호 ${res.id}`);
     } else if (outcome === 'dup') {
       guard = null; go(`#/my?app=${newKey}`); toast('이미 이 공고에 지원했어요. 제출한 지원서를 확인하세요.', true);
     } else if (outcome === 'changed') {
@@ -583,6 +564,8 @@ function viewApply(view, recId, u) {
       toast('프로필이 바뀌었어요. 바뀐 내용을 확인한 뒤 다시 제출해주세요. 입력 내용은 그대로 있어요.', true);
     } else if (outcome === 'login') {
       toast('로그인 상태가 바뀌어 제출하지 못했어요. 다시 로그인해주세요.', true);
+    } else if (outcome === 'network' || outcome === 'upload' || outcome === 'invalid') {
+      toast(outcome === 'invalid' ? '입력한 내용을 서버에서 받지 못했어요. 입력을 확인하고 다시 제출해주세요.' : outcome === 'upload' ? '첨부 파일을 올리지 못했어요. 연결을 확인하고 다시 제출해주세요. 입력 내용은 그대로 있어요.' : res.message, true);
     } else {
       toast(outcome === 'closed' ? '공고 상태가 바뀌어 제출하지 못했어요. 입력 내용은 그대로 있어요.' : '이메일 확인이나 프로필 상태가 바뀌어 제출하지 못했어요.', true);
     }
@@ -633,31 +616,23 @@ function viewMy(view, q, u) {
     const btn = e.currentTarget;
     const ok = await confirmDialog({ title: '지원을 철회할까요?', body: `<p><b>${esc(S.labs[r.lab].name)}</b> · ${esc(r.title)}</p><p>현재 상태 ${esc(s)}에서 철회해요. 철회하면 되돌릴 수 없고 같은 공고에 다시 지원할 수 없어요.</p>`, ok: '지원 철회', danger: true });
     if (!ok) return;
-    let outcome = null;
-    await busy(btn, '철회 중…', async () => {
-      await sleep(LATENCY);
-      const me = sameUser(u);
-      if (!me) { outcome = 'login'; return; }
-      const app = S.apps[sel];
-      // 확인창에서 본 상태와 달라졌으면 저장하지 않고 다시 확인받는다 (B.2)
-      if (!app || app.studentId !== me.id || appStatus(app) !== s) { outcome = 'changed'; return; }
-      app.history.push(['철회', nowIso()]); touch(); save(); outcome = 'ok';
-    });
+    // 확인창에서 본 상태와 달라졌으면 서버가 저장하지 않는다 (B.2)
+    const res = await busy(btn, '철회 중…', () => api.withdraw(sel, s));
+    const outcome = res.ok ? 'ok' : res.code;
     render();
     if (outcome === 'ok') toast('지원을 철회했어요.');
-    else toast(outcome === 'login' ? '로그인 상태가 바뀌어 철회하지 못했어요. 다시 로그인해주세요.' : '상태가 이미 바뀌어 철회하지 못했어요. 최신 상태를 확인하고 다시 시도하세요.', true);
+    else toast(outcome === 'network' ? res.message : outcome === 'login' ? '로그인 상태가 바뀌어 철회하지 못했어요. 다시 로그인해주세요.' : '상태가 이미 바뀌어 철회하지 못했어요. 최신 상태를 확인하고 다시 시도하세요.', true);
   });
 }
 
 // ---------- 로그인 ----------
-const DEMO_ACCOUNTS = ['U1', 'U2', 'U3', 'U4'];
-function demoDesc(u) {
-  if (u.role === 'student') return `${u.name} · ${u.department || DEPT}${u.grade ? ` ${u.grade}학년` : ''}`;
-  if (u.role === 'operator') return `${u.department} 인증 검토`;
-  if (isApprovedAdmin(u)) return `${S.labs[u.assignedLabId].name} · 승인됨`;
-  const p = pendingReqOf(u); if (p) return `${S.labs[p.labId].name} · 승인 대기`;
-  const last = vreqsOf(u)[0]; if (last && last.status === '반려') return `${S.labs[last.labId].name} · 반려됨`;
-  return '연구실 인증 신청 전';
+// 발표용 데모 계정 4개 (서버가 역할·연구실 상태를 함께 알려 준다)
+const DEMO_ORDER = ['student-a@g.skku.edu', 'admin-a@skku.edu', 'admin-b@skku.edu', 'ops@skku.edu'];
+function demoDesc(d) {
+  if (d.role === 'student') return `${d.name} · ${d.department || DEPT}${d.grade ? ` ${d.grade}학년` : ''}`;
+  if (d.role === 'operator') return `${d.department} 인증 검토`;
+  if (d.approved) return `${d.lab} · 승인됨`;
+  return d.lab ? `${d.lab} · 인증 신청함` : '연구실 인증 신청 전';
 }
 function viewLogin(view, q) {
   const next = safeReturn(q.get('next') || '');
@@ -683,7 +658,7 @@ function viewLogin(view, q) {
       <aside class="lk-panel auth__demo" aria-labelledby="demo-title">
         <h2 class="lk-item-title" id="demo-title">발표용 데모 계정</h2>
         <p class="lk-help">누르면 바로 로그인돼요. 직접 입력할 때 비밀번호는 <span class="code">${DEMO_PASSWORD}</span>이에요.</p>
-        <ul class="demo-list">${DEMO_ACCOUNTS.filter((id) => S.users[id]).map((id) => { const du = S.users[id]; return `<li><button type="button" class="demo-account" data-demo="${id}"><span class="demo-account__role">${roleLabel(du)}</span><span class="demo-account__desc">${esc(demoDesc(du))}</span><span class="lk-caption">${esc(du.email)}</span></button></li>`; }).join('')}</ul>
+        <ul class="demo-list">${[...(S.demo || [])].sort((a, b) => DEMO_ORDER.indexOf(a.email) - DEMO_ORDER.indexOf(b.email)).map((du) => `<li><button type="button" class="demo-account" data-demo="${esc(du.email)}"><span class="demo-account__role">${roleLabel(du)}</span><span class="demo-account__desc">${esc(demoDesc(du))}</span><span class="lk-caption">${esc(du.email)}</span></button></li>`).join('')}</ul>
       </aside>
     </div>`;
   const after = (u) => { go(next || fallback || homeOf(u), { replace: true }); toast(`${u.name || u.email}님, 로그인했어요.`); };
@@ -693,12 +668,12 @@ function viewLogin(view, q) {
     e.preventDefault();
     const res = await busy($('#li-submit'), '로그인 중…', () => api.login({ email: $('#li-email').value, password: $('#li-password').value }));
     if (res.ok) return after(res.user);
+    if (res.code === 'unconfirmed') { go(`#/check-email?${new URLSearchParams({ email: res.email, from: 'login' })}`); return; }
     applyErrors('li', res.errors || []);
     if (res.message) { formErr.textContent = res.message; formErr.hidden = false; $('#li-password').value = ''; $('#li-password').focus(); }
   });
   $$('[data-demo]').forEach((b) => b.addEventListener('click', async () => {
-    const u = S.users[b.dataset.demo];
-    const res = await busy(b, '로그인 중…', () => api.login({ email: u.email, password: DEMO_PASSWORD }));
+    const res = await busy(b, '로그인 중…', () => api.login({ email: b.dataset.demo, password: DEMO_PASSWORD }));
     if (res.ok) after(res.user); else { formErr.textContent = res.message; formErr.hidden = false; }
   }));
 }
@@ -723,7 +698,7 @@ function viewSignup(view, q) {
             <p class="lk-error" id="su-role-err" hidden></p>
           </fieldset>
           ${field({ id: 'su-email', label: '학교 이메일', type: 'email', attrs: 'autocomplete="email" inputmode="email" placeholder="example@g.skku.edu"', help: 'skku.edu 또는 g.skku.edu 주소만 가입할 수 있어요.' })}
-          ${field({ id: 'su-password', label: '랩노크 전용 비밀번호', type: 'password', note: '12~128자', attrs: 'autocomplete="new-password"', help: '학교 포털이나 메일 비밀번호는 쓰지 마세요. 랩노크에서만 쓰는 비밀번호를 만드세요.' })}
+          ${field({ id: 'su-password', label: '랩노크 전용 비밀번호', type: 'password', note: '12~72자', attrs: 'autocomplete="new-password"', help: '학교 포털이나 메일 비밀번호는 쓰지 마세요. 랩노크에서만 쓰는 비밀번호를 만드세요.' })}
           ${field({ id: 'su-password2', label: '비밀번호 확인', type: 'password', attrs: 'autocomplete="new-password"' })}
           <button class="lk-button auth__submit" type="submit" id="su-submit">가입하고 확인 메일 받기</button>
         </form>
@@ -741,9 +716,11 @@ function viewSignup(view, q) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const res = await busy($('#su-submit'), '가입 중…', () => api.signup({ email: $('#su-email').value, password: $('#su-password').value, password2: $('#su-password2').value, role: role() }));
-    if (!res.ok) { applyErrors('su', res.errors || []); return; }
+    if (!res.ok) { applyErrors('su', res.errors || []); if (res.code === 'network') toast(res.message, true); return; }
     guard = null;
-    go(`#/account/email${nq}`, { replace: true });
+    // 확인 링크를 누르면 로그인되고, 하던 작업(허용된 목적지)으로 돌아갈 수 있게 기억해 둔다
+    S.session.returnTo = next || null; save();
+    go(`#/check-email?${new URLSearchParams({ email: res.email })}`, { replace: true });
     toast('가입했어요. 학교 이메일로 보낸 확인 링크를 눌러주세요.');
   });
 }
@@ -758,109 +735,71 @@ function continueAction(u) {
 }
 function rememberReturn(q) {
   const next = safeReturn(q.get('next') || '');
-  if (S.session && (S.session.returnTo || '') !== next) { S.session.returnTo = next || null; save(); }
+  if ((S.session.returnTo || '') !== next) { S.session.returnTo = next || null; save(); }
   return next;
 }
 
 // ---------- 학교 이메일 확인 (FR-07-03·04) ----------
 function viewEmail(view, q, u) {
   rememberReturn(q);
-  if (u.emailVerifiedAt) {
-    view.innerHTML = `${head('학교 이메일 확인')}
-      <div class="lk-panel narrow stack">
-        <div class="row"><h2 class="lk-item-title">${esc(u.email)}</h2><span class="spacer"></span>${badge('확인 완료')}</div>
-        <p class="lk-help"><span class="lk-tabular">${fmtDateTime(u.emailVerifiedAt)}</span>에 확인했어요. 이메일 확인은 학교 학적 확인이 아니에요.</p>
-        <div class="row">${continueAction(u)}</div>
-      </div>`;
-    return;
-  }
-  const latest = verifsOf(u)[0];
-  view.innerHTML = `${head('학교 이메일 확인', '메일로 받은 확인 링크를 누르면 이메일 소유 확인이 끝나요.')}
+  view.innerHTML = `${head('학교 이메일 확인')}
     <div class="lk-panel narrow stack">
-      <div class="row"><h2 class="lk-item-title">${esc(u.email)}</h2><span class="spacer"></span>${badge('미확인')}</div>
-      <p>${latest ? `<span class="lk-tabular">${fmtDateTime(latest.issuedAt)}</span>에 확인 메일을 보냈어요. 링크는 <span class="lk-tabular">${fmtTime(latest.expiresAt)}</span>까지 30분 동안 쓸 수 있어요.` : '아직 보낸 확인 메일이 없어요.'}</p>
-      <div class="row">
-        <a class="lk-button" href="#/mailbox">가상 메일함 열기</a>
-        <button type="button" class="lk-button lk-button--secondary" id="resend" aria-describedby="resend-hint">확인 메일 다시 보내기</button>
-      </div>
+      <div class="row"><h2 class="lk-item-title">${esc(u.email)}</h2><span class="spacer"></span>${badge(u.emailVerifiedAt ? '확인 완료' : '미확인')}</div>
+      <p class="lk-help">${u.emailVerifiedAt ? `<span class="lk-tabular">${fmtDateTime(u.emailVerifiedAt)}</span>에 확인했어요. ` : ''}이메일 확인은 학교 학적 확인이 아니에요.</p>
+      <div class="row">${continueAction(u)}</div>
+    </div>`;
+}
+
+// 가입 직후·확인 전 로그인 시도: 메일함에서 링크를 누르도록 안내하고 다시 보낼 수 있게 한다 (FR-07-03·04)
+function viewCheckEmail(view, q) {
+  const email = normEmail(q.get('email') || '');
+  if (!emailDomainOk(email)) { view.innerHTML = panelMsg('확인할 이메일 주소가 없어요.', '회원가입을 다시 하거나 로그인해주세요.', '<a class="lk-button" href="#/login">로그인</a>'); return; }
+  const fromLogin = q.get('from') === 'login';
+  view.innerHTML = `${head('학교 이메일 확인', '메일로 받은 확인 링크를 누르면 이메일 확인이 끝나고 바로 로그인돼요.')}
+    <div class="lk-panel narrow stack">
+      <div class="row"><h2 class="lk-item-title">${esc(email)}</h2><span class="spacer"></span>${badge('미확인')}</div>
+      <p>${fromLogin ? '아직 이메일 확인이 끝나지 않았어요. 가입할 때 받은 메일의 확인 링크를 눌러주세요.' : '이 주소로 확인 메일을 보냈어요. 링크는 보낸 뒤 30분 동안 쓸 수 있어요.'}</p>
+      <div class="row"><button type="button" class="lk-button lk-button--secondary" id="resend" aria-describedby="resend-hint">확인 메일 다시 보내기</button></div>
       <p class="lk-help" id="resend-hint"></p>
       <hr class="divider" style="margin:0">
-      <p class="lk-help">확인하기 전에도 공고 탐색과 프로필 보완은 할 수 있어요. 지원서 제출과 연구실 인증 신청은 이메일을 확인한 뒤에 할 수 있어요.</p>
-      <p class="lk-caption">발표용 서비스라 실제 메일은 보내지 않고 가상 메일함에 넣어요.</p>
+      <p class="lk-help">메일이 보이지 않으면 스팸함을 확인해주세요. 새 메일을 보내면 이전 링크는 더 이상 쓸 수 없어요. 확인을 마치기 전에도 연구실 탐색은 할 수 있어요.</p>
     </div>`;
   const btn = $('#resend');
   const hint = $('#resend-hint');
   const tick = () => {
     if (btn.getAttribute('aria-busy')) return;
-    const ms = nextResendInMs(u);
+    const ms = nextResendInMs(email);
     btn.disabled = ms > 0;
-    hint.textContent = ms > 0 ? `새 메일은 ${Math.ceil(ms / 1000)}초 뒤에 보낼 수 있어요.` : '새 메일을 보내면 이전 링크는 더 이상 쓸 수 없어요.';
+    hint.textContent = ms > 0 ? `새 메일은 ${Math.ceil(ms / 1000)}초 뒤에 보낼 수 있어요.` : '';
   };
   tick(); pageInterval(tick, 1000);
   btn.addEventListener('click', async () => {
-    const res = await busy(btn, '보내는 중…', () => api.resendVerification());
-    if (res.ok) { render(); toast('확인 메일을 다시 보냈어요. 가장 최근 메일의 링크를 눌러주세요.'); } else { tick(); toast(res.message, true); }
+    const res = await busy(btn, '보내는 중…', () => api.resendVerification(email));
+    tick();
+    if (res.ok) toast('확인 메일을 다시 보냈어요. 가장 최근 메일의 링크를 눌러주세요.'); else toast(res.message, true);
   });
 }
 
+// 메일의 확인 링크를 연 결과 (시작할 때 링크를 처리하고 이 화면으로 온다)
 function viewVerifyEmail(view, q, u) {
-  const token = q.get('token');
-  if (token) {
-    const res = api.verifyEmail(token);
-    const code = res.ok ? 'ok' : res.code;
-    history.replaceState(null, '', `#/verify-email?result=${code}`);
-    return viewVerifyEmail(view, new URLSearchParams({ result: code }), currentUser() || u);
-  }
-  const code = q.get('result') || 'invalid';
-  const r = { ok: code === 'ok' && !!u.emailVerifiedAt, code: code === 'ok' ? 'invalid' : code };
-  const MSG = {
-    invalid: ['올바르지 않은 확인 링크예요.', '메일함에서 가장 최근 메일의 링크를 다시 눌러주세요.'],
-    other: ['지금 로그인한 계정의 확인 링크가 아니에요.', '링크를 받은 계정으로 로그인한 뒤 다시 눌러주세요.'],
-    used: ['이미 사용한 확인 링크예요.', u.emailVerifiedAt ? '이메일은 이미 확인된 상태예요.' : '새 확인 메일을 받아 다시 시도해주세요.'],
-    superseded: ['더 최근에 보낸 확인 메일이 있어요.', '새 메일을 보내면 이전 링크는 쓸 수 없어요. 가장 최근 메일의 링크를 눌러주세요.'],
-    expired: ['확인 링크가 만료됐어요.', '링크는 보낸 뒤 30분 동안만 쓸 수 있어요. 새 확인 메일을 받아주세요.'],
-  };
-  if (!r.ok && u.emailVerifiedAt) {
+  const code = q.get('result') || 'expired';
+  if (code === 'ok' && u) {
     view.innerHTML = `${head('학교 이메일 확인')}
       <div class="lk-panel narrow stack">
-        <div class="row"><h2 class="lk-item-title">이미 확인된 이메일이에요.</h2><span class="spacer"></span>${badge('확인 완료')}</div>
-        <p class="lk-help">${esc(u.email)}은(는) <span class="lk-tabular">${fmtDateTime(u.emailVerifiedAt)}</span>에 확인했어요. 이 링크는 더 쓸 필요가 없어요.</p>
+        <div class="row"><h2 class="lk-item-title">학교 이메일을 확인했어요.</h2><span class="spacer"></span>${badge('확인 완료')}</div>
+        <p class="lk-help">${esc(u.email)}(으)로 로그인했어요. 이메일 확인은 학교 학적 확인이 아니에요.</p>
         <div class="row">${continueAction(u)}</div>
       </div>`;
     return;
   }
-  if (r.ok) {
-    view.innerHTML = `${head('학교 이메일 확인')}
-      <div class="lk-panel narrow stack">
-        <div class="row"><h2 class="lk-item-title">학교 이메일을 확인했어요.</h2><span class="spacer"></span>${badge('확인 완료')}</div>
-        <p class="lk-help">${esc(u.email)} · 이메일 확인은 학교 학적 확인이 아니에요.</p>
-        <div class="row">${continueAction(u)}</div>
-      </div>`;
-  } else {
-    const [title, desc] = MSG[r.code] || MSG.invalid;
-    view.innerHTML = `${head('학교 이메일 확인')}
-      <div class="lk-panel narrow stack">
-        <h2 class="lk-item-title">${title}</h2><p class="lk-help">${desc}</p>
-        <div class="row"><a class="lk-button" href="#/account/email">이메일 확인 화면으로</a><a class="lk-button lk-button--secondary" href="#/mailbox">가상 메일함</a></div>
-      </div>`;
-  }
-}
-
-// ---------- 가상 메일함 (실제 메일 대신) ----------
-function viewMailbox(view, u) {
-  const list = mailOf(u);
-  view.innerHTML = `${head('가상 메일함', `발표용으로 실제 메일 대신 이곳에 보내요 · ${esc(u.email)}`)}
-    ${list.length ? `<ul class="mail-list">${list.map((m) => `
-      <li class="lk-panel mail">
-        <div class="mail__head"><div><p class="mail__from">랩노크 <span class="lk-caption">no-reply@labknock.example</span></p><h2 class="lk-item-title">${esc(m.subject)}</h2></div><time class="lk-caption lk-tabular">${fmtDateTime(m.sentAt)}</time></div>
-        <div class="mail__body">
-          <p>${m.kind === 'resend' ? '요청하신 학교 이메일 확인 메일을 다시 보내드려요. 이전에 받은 링크는 더 이상 쓸 수 없어요.' : `${esc(u.name || '회원')}님, 랩노크 가입을 환영해요.`}</p>
-          <p>아래 버튼을 눌러 이 주소(${esc(m.to)})가 본인의 학교 이메일인지 확인해주세요. 링크는 <span class="lk-tabular">${fmtDateTime(m.expiresAt)}</span>까지 쓸 수 있어요.</p>
-          <p><a class="lk-button" href="${esc(m.link)}">이메일 확인하기</a></p>
-          <p class="lk-caption">본인이 요청하지 않았다면 이 메일을 무시하세요.</p>
-        </div>
-      </li>`).join('')}</ul>`
-      : panelMsg('받은 메일이 없어요.', '회원가입하거나 확인 메일을 다시 보내면 여기에 와요.', '<a class="lk-button lk-button--secondary" href="#/account/email">이메일 확인 화면으로</a>')}`;
+  const [title, desc] = code === 'network'
+    ? ['서버에 연결하지 못했어요.', '인터넷 연결을 확인한 뒤 메일의 링크를 다시 눌러주세요.']
+    : ['확인 링크가 만료됐거나 이미 사용한 링크예요.', '링크는 보낸 뒤 30분 동안 한 번만 쓸 수 있고, 새 메일을 받으면 이전 링크는 쓸 수 없어요. 이미 확인했다면 로그인하면 돼요.'];
+  view.innerHTML = `${head('학교 이메일 확인')}
+    <div class="lk-panel narrow stack">
+      <h2 class="lk-item-title">${title}</h2><p class="lk-help">${desc}</p>
+      <div class="row"><a class="lk-button" href="#/login">로그인</a></div>
+    </div>`;
 }
 
 // ---------- 내 정보 (4.7.1) ----------
@@ -1132,29 +1071,19 @@ function viewRecruit(view, q, u) {
   const shown = (k, v) => (v === '' || v == null ? '(빈 값)' : k === 'start' || k === 'end' ? fmtDate(v) : String(v));
   const diff = (d) => Object.keys(REC_FIELDS).filter((k) => String(d[k] ?? '') !== String(r[k] ?? '')).map((k) => `${REC_FIELDS[k]} ${shown(k, r[k])} → ${shown(k, d[k])}`).join(', ');
   // 저장할 때마다 마지막 저장 시각과 변경 이력(주체·시각·종류·변경 전후)을 남긴다 (FR-05-07)
-  const newId = () => { let i = 8; while (S.recs[`R${i}`]) i += 1; return `R${i}`; };
-  const commit = async (btn, idOrNull, patch, msg, action, detail = '') => {
-    let outcome = null; let id = idOrNull;
-    await busy(btn, '저장 중…', async () => {
-      await sleep(LATENCY);
-      const me = sameUser(u);
-      if (!me || !isApprovedAdmin(me) || me.assignedLabId !== LAB) { outcome = 'login'; return; }
-      if (!id) id = newId();
-      const live = S.recs[id];
-      // 화면을 연 뒤 다른 곳에서 먼저 저장됐으면 덮어쓰지 않는다 (마지막 저장 시각으로 버전 확인)
-      if (idOrNull && (!live || live.lab !== LAB || live.savedAt !== r.savedAt)) { outcome = 'conflict'; return; }
-      const base = live || r; const at = nowIso();
-      S.recs[id] = { ...base, ...patch, savedAt: at, log: [...(base.log || []), [action, at, detail, me.name]] };
-      touch(); save(); guard = null; outcome = 'ok';
-    });
-    if (outcome === 'ok') { go(`#/admin/recruitments?rec=${id}`, { replace: true }); toast(msg); return; }
-    if (outcome === 'login') { guard = null; render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
+  // 서버가 권한·고정 규칙·입력을 다시 검사하고, 화면을 연 뒤 다른 곳에서 먼저 저장됐으면 덮어쓰지 않는다 (마지막 저장 시각으로 버전 확인)
+  const commit = async (btn, idOrNull, action, data, msg, detail = '') => {
+    const res = await busy(btn, '저장 중…', () => api.saveRecruitment(idOrNull, idOrNull ? r.savedAt : null, action, data, detail));
+    if (res.ok) { guard = null; go(`#/admin/recruitments?rec=${res.id}`, { replace: true }); toast(msg); return; }
+    if (res.errors) { showErrors(res.errors); return; }
+    if (res.code === 'network') { toast(res.message, true); return; }
+    if (res.code === 'login') { guard = null; render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
     toast('다른 곳에서 이 공고가 먼저 바뀌었어요. 화면을 새로 열어 최신 내용을 확인한 뒤 다시 시도하세요.', true);
   };
 
   on('#save-draft', (e) => {
     const d = collect(); if (!showErrors(checks(d, false))) return;
-    commit(e.currentTarget, isNew ? null : sel, d, '초안을 저장했어요. 학생에게는 아직 보이지 않아요.', '초안 저장');
+    commit(e.currentTarget, isNew ? null : sel, 'draft', d, '초안을 저장했어요. 학생에게는 아직 보이지 않아요.');
   });
   on('#publish', async (e) => {
     if (isNew) return; // 새 공고는 초안을 먼저 저장해야 게시할 수 있다 (UI-05)
@@ -1162,11 +1091,11 @@ function viewRecruit(view, q, u) {
     const d = collect(); if (!showErrors(checks(d, true))) return;
     const ok = await confirmDialog({ title: '공고를 게시할까요?', body: `<p><b>${esc(d.title)}</b></p><p class="lk-tabular">모집기간 ${fmtDate(d.start)} – ${fmtDate(d.end)} · ${esc(d.capacity)}명</p><p>게시하면 연구실 탐색에 바로 공개되고 게시를 취소할 수 없어요. 첫 지원 이후에는 기간 연장과 조기 마감만 할 수 있어요.</p>`, ok: '공고 게시' });
     if (!ok) return;
-    commit(btn, sel, { ...d, capacity: Number(d.capacity), published: true }, '공고를 게시했어요. 연구실 탐색에서 확인할 수 있어요.', '게시', `모집기간 ${fmtDate(d.start)} – ${fmtDate(d.end)} · ${d.capacity}명`);
+    commit(btn, sel, 'publish', d, '공고를 게시했어요. 연구실 탐색에서 확인할 수 있어요.', `모집기간 ${fmtDate(d.start)} – ${fmtDate(d.end)} · ${d.capacity}명`);
   });
   on('#save-edit', (e) => {
     const d = collect(); if (!showErrors(checks(d, true))) return;
-    commit(e.currentTarget, sel, { ...d, capacity: Number(d.capacity) }, '공고 변경 내용을 저장했어요.', '내용 수정', diff(d) || '변경 없음');
+    commit(e.currentTarget, sel, 'edit', d, '공고 변경 내용을 저장했어요.', diff(d) || '변경 없음');
   });
   on('#extend', async (e) => {
     const btn = e.currentTarget;
@@ -1174,12 +1103,12 @@ function viewRecruit(view, q, u) {
     if (!end || end <= r.end) { showErrors([['end', `새 마감일은 현재 마감일(${fmtDate(r.end)})보다 늦어야 해요.`]]); return; }
     clear();
     const ok = await confirmDialog({ title: '모집 기간을 연장할까요?', body: `<p class="lk-tabular">마감일 ${fmtDate(r.end)} → <b>${fmtDate(end)}</b></p><p>연장한 기간은 다시 줄일 수 없어요. 시작일과 다른 공고 항목은 바뀌지 않아요.</p>`, ok: '기간 연장' });
-    if (ok) commit(btn, sel, { end }, `마감일을 ${fmtDate(end)}로 연장했어요.`, '기간 연장', `마감일 ${fmtDate(r.end)} → ${fmtDate(end)}`);
+    if (ok) commit(btn, sel, 'extend', { end }, `마감일을 ${fmtDate(end)}로 연장했어요.`, `마감일 ${fmtDate(r.end)} → ${fmtDate(end)}`);
   });
   on('#early-close', async (e) => {
     const btn = e.currentTarget;
     const ok = await confirmDialog({ title: '모집을 조기 마감할까요?', body: `<p><b>${esc(r.title)}</b></p><p>마감하면 다시 열 수 없고 새 지원을 받을 수 없어요. 이미 받은 지원서 심사는 계속할 수 있어요.</p>`, ok: '조기 마감', danger: true });
-    if (ok) commit(btn, sel, { earlyClosedAt: nowIso() }, '모집을 조기 마감했어요.', '조기 마감', '모집 중 → 마감');
+    if (ok) commit(btn, sel, 'close', {}, '모집을 조기 마감했어요.');
   });
 }
 function recField(k, value, ro, req, note, cls = '', type = 'text', label = REC_FIELDS[k]) {
@@ -1288,21 +1217,13 @@ function viewReview(view, q, u) {
     const final = TERMINAL.includes(pick);
     const ok = await confirmDialog({ title: `${pick === '검토 중' ? '검토를 시작' : `'${pick}'(으)로 변경`}할까요?`, body: `<p><b>${esc(cur.student)}</b> · 접수 ${cur.id}</p><p>${s} → <b>${pick}</b></p><p>${final ? '최종 결과는 저장 후 되돌릴 수 없어요.' : '저장한 상태는 이전 단계로 되돌릴 수 없어요.'}</p>`, ok: '변경 저장' });
     if (!ok) return;
-    let outcome = null;
-    await busy($('#rv-confirm'), '저장 중…', async () => {
-      await sleep(LATENCY);
-      const me = sameUser(u);
-      if (!me || !isApprovedAdmin(me) || me.assignedLabId !== LAB) { outcome = 'login'; return; }
-      const app = S.apps[sel];
-      // 확인창에서 본 상태(s)에서 바뀌었으면 저장하지 않는다
-      if (!app || app.rec !== rec || appStatus(app) !== s) { outcome = 'changed'; return; }
-      if (pick === '합격' && full()) { outcome = 'full'; return; } // 확정 순간에도 정원을 다시 검사한다 (FR-06-07)
-      app.history.push([pick, nowIso()]); touch(); save(); outcome = 'ok';
-    });
+    // 서버가 확인창에서 본 상태(s)와 허용 전이를 다시 검사하고, 합격이면 공고를 잠근 채 정원을 세어 저장과 한 번에 확정한다 (FR-06-07)
+    const res = await busy($('#rv-confirm'), '저장 중…', () => api.decideApplication(sel, rec, s, pick));
+    const outcome = res.ok ? 'ok' : res.code;
     if (outcome === 'full' && $('#rv-err')) { capacityError(s); return; }
     if (outcome !== 'ok') {
       render();
-      toast(outcome === 'login' ? '로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.' : '다른 곳에서 상태가 이미 바뀌었어요. 최신 상태를 확인하세요.', true);
+      toast(outcome === 'network' ? res.message : outcome === 'login' ? '로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.' : '다른 곳에서 상태가 이미 바뀌었어요. 최신 상태를 확인하세요.', true);
       return;
     }
     // FR-06-08.5: 바뀐 상태가 현재 필터에서 빠지면 선택을 해제한다

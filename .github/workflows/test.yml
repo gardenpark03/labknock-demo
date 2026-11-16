@@ -11,6 +11,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      # 시험에 필요한 것만 띄운다: DB·인증·REST·Storage·메일 수집기(Mailpit)·게이트웨이
+      - run: supabase start -x studio,edge-runtime,logflare,vector,imgproxy,realtime,supavisor,postgres-meta
       - run: npm install
       - run: npx playwright test
       - uses: actions/upload-artifact@v4

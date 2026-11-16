@@ -1,5 +1,5 @@
 /* LabKnock · 공통 도구
- * DOM 선택, 날짜·글자 수 계산, 확인창, 알림, 첨부 파일 보관(IndexedDB), SHA-256 */
+ * DOM 선택, 날짜·글자 수 계산, 확인창, 알림, 첨부 파일 열기, 난수 */
 'use strict';
 
 // ---------- DOM·문자열 ----------
@@ -46,7 +46,9 @@ function confirmDialog({ title, body, ok = '확인', cancel = '취소', danger =
   });
 }
 let toastTimer;
+let toastAt = 0;
 function toast(msg, isError = false) {
+  toastAt = Date.now();
   const el = $('#toast');
   el.textContent = msg;
   el.classList.toggle('is-error', isError);
@@ -72,39 +74,15 @@ const pageTimers = new Set();
 function pageInterval(fn, ms) { const id = setInterval(fn, ms); pageTimers.add(id); return id; }
 function clearPageTimers() { pageTimers.forEach((id) => clearInterval(id)); pageTimers.clear(); }
 
-// ---------- 첨부 파일 보관 ----------
-// 사용자가 고른 PDF를 이 브라우저의 IndexedDB에 보관해 새로고침 뒤에도 열 수 있게 한다
-const FileStore = (() => {
-  const mem = new Map();
-  let dbp = null;
-  const open = () => {
-    if (dbp) return dbp;
-    dbp = new Promise((res) => {
-      try {
-        const rq = indexedDB.open('labknock-files', 1);
-        rq.onupgradeneeded = () => rq.result.createObjectStore('files');
-        rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => res(null);
-      } catch { res(null); }
-    });
-    return dbp;
-  };
-  const tx = (db, mode, fn) => new Promise((res) => {
-    try { const t = db.transaction('files', mode); const out = fn(t.objectStore('files')); t.oncomplete = () => res(out && out.result); t.onerror = () => res(null); t.onabort = () => res(null); } catch { res(null); }
-  });
-  return {
-    async put(key, blob) { mem.set(key, blob); const db = await open(); if (db) await tx(db, 'readwrite', (s) => s.put(blob, key)); },
-    async get(key) { if (mem.has(key)) return mem.get(key); const db = await open(); return db ? (await tx(db, 'readonly', (s) => s.get(key))) || null : null; },
-    async clear() { mem.clear(); const db = await open(); if (db) await tx(db, 'readwrite', (s) => s.clear()); },
-  };
-})();
-// data-file 링크를 보관된 파일의 주소로 바꾼다. 이 브라우저에 파일이 없으면 이름만 남긴다
+// ---------- 첨부 파일 열기 ----------
+// data-file 링크(Storage 경로)를 10분 동안 쓸 수 있는 주소로 바꾼다. 볼 권한이 없으면 서버가 거절하고 이름만 남긴다
 function hydrateFiles(root) {
   $$('a[data-file]', root).forEach(async (a) => {
-    const blob = await FileStore.get(a.dataset.file);
+    let url = null;
+    try { const { data } = await SB.storage.from('files').createSignedUrl(a.dataset.file, 600); url = data && data.signedUrl; } catch { /* 아래에서 이름만 남긴다 */ }
     if (!a.isConnected) return;
-    if (blob) { a.href = URL.createObjectURL(blob); a.target = '_blank'; a.rel = 'noopener'; a.removeAttribute('aria-disabled'); }
-    else { const span = document.createElement('span'); span.textContent = `${a.dataset.name} (이 브라우저에는 파일이 없어요)`; a.replaceWith(span); }
+    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.removeAttribute('aria-disabled'); }
+    else { const span = document.createElement('span'); span.textContent = `${a.dataset.name} (파일을 열 수 없어요)`; a.replaceWith(span); }
   });
 }
 

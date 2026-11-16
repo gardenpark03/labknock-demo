@@ -158,7 +158,8 @@ const roleLabel = (u) => (u.role === 'student' ? '학생' : u.role === 'operator
 // 확인창이나 처리 대기 뒤에도 같은 사람이 로그인해 있는지 다시 확인한다 (FR-07-13.3)
 const sameUser = (u) => { const me = currentUser(); return me && u && me.id === u.id ? me : null; };
 const profileComplete = (u) => u.role !== 'student' || (chars(u.name) >= 1 && [1, 2, 3, 4].includes(Number(u.grade)) && u.declaration === true);
-const homeOf = (u) => (!u || u.role === 'student' ? '#/labs' : u.role === 'operator' ? '#/ops/verifications' : '#/admin/recruitments');
+// 로그인 뒤 기본 목적지: 방문자·학생은 홈, 연구실 관리자·운영 보조는 각자의 업무 화면
+const homeOf = (u) => (!u || u.role === 'student' ? '#/' : u.role === 'operator' ? '#/ops/verifications' : '#/admin/recruitments');
 // FR-07-13·3.1.8: 로그인·이메일 확인·프로필 보완 뒤 돌아갈 수 있는 내부 목적지만 허용한다
 // 이메일 확인 링크는 로그인 뒤 그 링크를 이어서 처리하려고 예외로 허용한다
 const RETURN_OK = /^#\/(lab\/L\d+\/R\d+(\?back=[\w%.~*'()!=&+-]*)?|apply\/R\d+|my(\?app=A\d+)?|verify-email\?token=[0-9a-f]{32})$/;

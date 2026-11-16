@@ -132,10 +132,161 @@ const proofLink = (r) => (r.sample
   ? `<a class="lk-link" href="${r.sample}" target="_blank" rel="noopener">${esc(r.proof)} 보기</a>`
   : `<a class="lk-link" href="#" data-file="${r.fileKey ? `file:${esc(r.fileKey)}` : `vr:${r.id}`}" data-name="${esc(r.proof)}" aria-disabled="true">${esc(r.proof)} 보기</a>`);
 
+// ---------- 홈 (SRS 화면 목록 밖의 소개 화면) ----------
+// 처음 온 사람이 서비스와 진행 방식을 이해하고 탐색(UI-01)으로 들어가게 한다.
+// 모집 정보는 탐색과 같은 데이터·규칙(게시된 공고, 모집 상태, D-day)으로만 보여 주고 새 업무 규칙은 만들지 않는다.
+const HOW_STEPS = [
+  ['가입과 이메일 확인', '학교 이메일로 가입하고 메일로 받은 링크를 눌러 확인해요. 이름·학년과 학부생 자기확인으로 프로필도 완성해요.'],
+  ['연구실 찾기', '연구 분야와 모집 상태로 공고를 찾고, 연구 주제와 요구 역량, 모집기간을 살펴봐요.'],
+  ['지원서 제출', '자기소개를 쓰고 진학 희망 과정을 고른 뒤 CV를 PDF로 첨부해요. 성적증명서와 포트폴리오는 선택이에요.'],
+  ['진행 상황 확인', '내 지원 현황에서 진행 단계와 상태 이력을 확인해요. 제출한 내용도 다시 볼 수 있어요.'],
+];
+const LAB_STEPS = [
+  ['관리자 신청자로 가입', '학교 이메일로 가입해 이메일을 확인하고 이름을 입력해요.'],
+  ['연구실 소속 인증 신청', '관리할 연구실을 고르고, 소속 설명과 관리 위임을 확인할 수 있는 PDF를 올려요.'],
+  ['운영 보조 검토', '운영 보조가 자료를 확인해 승인하거나 사유와 함께 반려해요. 반려되면 다시 신청할 수 있어요.'],
+  ['공고 게시와 지원자 심사', '승인되면 배정된 연구실의 공고를 올리고, 지원서를 검토해 면담이나 합격·불합격으로 처리해요.'],
+];
+const HOME_FAQ = [
+  ['누가 지원할 수 있나요?', '소프트웨어학과 학부생이 대상이에요. 학교 이메일(skku.edu·g.skku.edu)로 가입해 이메일을 확인하고, 이름·학년과 학부생 자기확인으로 프로필을 완성하면 지원할 수 있어요.'],
+  ['제출한 지원서를 고치거나 취소할 수 있나요?', '제출한 내용은 고칠 수 없어요. 지원 완료·검토 중·면담 단계에서는 내 지원 현황에서 철회할 수 있어요. 철회는 되돌릴 수 없고, 철회한 공고에는 다시 지원할 수 없어요.'],
+  ['결과는 어떻게 알 수 있나요?', '내 지원 현황에서 진행 단계와 상태 이력을 확인해요. 면담은 연구실이 필요할 때만 진행하고, 일정은 연구실이 따로 안내해요. 랩노크는 따로 알림을 보내지 않아요.'],
+  ['모집 공고는 누가 올리나요?', '연구실 소속 인증을 승인받은 연구실 관리자만 자기 연구실의 공고를 올리고 지원자를 심사해요. 제출한 지원서는 본인과 해당 연구실 관리자만 볼 수 있어요.'],
+  ['실제로 운영하는 서비스인가요?', '소프트웨어공학개론 팀 프로젝트의 시연용 서비스예요. 모든 인물·연구실·공고는 가상이고, 입력한 내용은 지금 쓰는 브라우저에만 저장돼요. 실제 메일도 보내지 않아요.'],
+];
+const CHEVRON = '<svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function viewHome(view, q, u) {
+  const recs = publicRecs();
+  const count = (s) => recs.filter((r) => r.status === s).length;
+  // 마감이 가까운 순: 모집 중인 공고만, 마감일 → 연구실 이름 순
+  const soon = recs.filter((r) => r.status === '모집 중')
+    .sort((a, b) => a.end.localeCompare(b.end) || S.labs[a.lab].name.localeCompare(S.labs[b.lab].name, 'ko') || a.id.localeCompare(b.id))
+    .slice(0, 3);
+  const isStudent = !!u && u.role === 'student';
+  const howActions = !u
+    ? '<a class="lk-button" href="#/signup?role=student">학생으로 가입하기</a><a class="lk-button lk-button--secondary" href="#/labs">연구실 먼저 둘러보기</a>'
+    : isStudent ? '<a class="lk-button" href="#/labs">연구실 탐색</a><a class="lk-button lk-button--secondary" href="#/my">내 지원 현황</a>' : '';
+  const labAction = !u ? '<a class="lk-button" href="#/signup?role=admin">관리자 신청자로 가입하기</a>'
+    : isApprovedAdmin(u) ? '<a class="lk-button" href="#/admin/recruitments">모집 공고 관리</a>'
+    : isAdmin(u) ? '<a class="lk-button" href="#/verification">연구실 소속 인증</a>' : '';
+  const step = ([t, d], i) => `<li><span class="step-num" aria-hidden="true">${i + 1}</span><div class="step-text"><h3>${t}</h3><p>${d}</p></div></li>`;
+  const statusLink = (s) => `<a class="status-link" href="#/labs?${new URLSearchParams({ status: s })}">${s} <span class="lk-tabular">${count(s)}건</span></a>`;
+
+  view.innerHTML = `
+    ${meStrip(u)}
+    <div class="home-hero">
+      <section class="home-intro" aria-labelledby="home-title">
+        <p class="eyebrow">소프트웨어학과 학부연구생 모집·지원</p>
+        <h1 class="lk-title" id="home-title">관심 있는 연구실을 찾고,<br>지원까지 한 곳에서</h1>
+        <p class="home-lead">연구실이 직접 올린 학부연구생 모집 공고를 한곳에서 보고, 지원서 제출부터 결과 확인까지 랩노크에서 이어서 할 수 있어요.</p>
+        <form class="home-search" id="home-search" role="search" novalidate>
+          <label class="lk-label" for="home-q">연구실 이름 또는 연구 분야로 찾기</label>
+          <div class="home-search__row">
+            <input class="lk-input" id="home-q" placeholder="예: 인공지능" autocomplete="off" aria-describedby="home-q-err">
+            <button class="lk-button" type="submit">검색</button>
+          </div>
+          <p class="lk-error" id="home-q-err" hidden></p>
+        </form>
+        <div class="home-browse">
+          <p class="lk-label" id="home-fields">연구 분야</p>
+          <ul class="chip-list" aria-labelledby="home-fields">${recFields().map((f) => `<li><a class="chip" href="#/labs?${new URLSearchParams({ field: f })}">${esc(f)}</a></li>`).join('')}</ul>
+        </div>
+      </section>
+      <aside class="lk-panel soon" aria-labelledby="soon-title">
+        <h2 class="lk-item-title" id="soon-title">마감이 가까운 공고</h2>
+        ${soon.length ? `<ol class="soon__list">${soon.map((r) => `
+          <li><a class="soon__item" href="#/lab/${r.lab}/${r.id}?back=">
+            <span class="soon__lab">${esc(S.labs[r.lab].name)}</span>
+            <span class="soon__title">${esc(r.title)}</span>
+            <span class="soon__due lk-tabular"><span class="dday">${dday(r)}</span>${fmtDate(r.end)}까지</span>
+          </a></li>`).join('')}</ol>` : '<p class="lk-description">지금 모집 중인 공고가 없어요.</p>'}
+        <div class="soon__status" role="group" aria-label="모집 상태별 공고">${['모집 중', '모집 예정', '마감'].map(statusLink).join('')}</div>
+        <a class="detail-link" href="#/labs">모집 공고 전체 보기 ›</a>
+      </aside>
+    </div>
+    <section class="home-section" id="home-how" aria-labelledby="how-title">
+      <div class="home-section__head">
+        <h2 class="lk-section-title" id="how-title">학생은 이렇게 지원해요</h2>
+        <p class="lk-description">가입부터 결과 확인까지 랩노크 안에서 이어져요.</p>
+      </div>
+      <ol class="steps">${HOW_STEPS.map(step).join('')}</ol>
+      ${howActions ? `<div class="section-actions">${howActions}</div>` : ''}
+    </section>
+    <section class="home-section" id="home-lab" aria-labelledby="lab-title">
+      <div class="lab-guide">
+        <div class="lab-guide__intro">
+          <h2 class="lk-section-title" id="lab-title">연구실 관리자라면</h2>
+          <p class="lk-description">교수 또는 연구실을 대표하는 대학원생이 연구실 소속 인증을 받으면, 자기 연구실의 모집 공고를 올리고 지원자를 심사할 수 있어요.</p>
+          <p class="lk-help">인증이 승인되기 전에는 공고를 만들거나 지원자를 볼 수 없어요.</p>
+          ${labAction ? `<div class="section-actions">${labAction}</div>` : ''}
+        </div>
+        <ol class="vsteps">${LAB_STEPS.map(step).join('')}</ol>
+      </div>
+    </section>
+    <section class="home-section" id="home-faq" aria-labelledby="faq-title">
+      <div class="home-section__head"><h2 class="lk-section-title" id="faq-title">자주 묻는 질문</h2></div>
+      <div class="lk-panel faq">${HOME_FAQ.map(([qq, a], i) => `<details id="faq-${i + 1}"><summary id="faq-${i + 1}-q"><span>${qq}</span>${CHEVRON}</summary><p class="faq__a">${a}</p></details>`).join('')}</div>
+    </section>`;
+
+  // 검색: 탐색 화면과 같은 50자 기준으로 검사하고, 통과하면 그 조건으로 탐색을 연다 (FR-01-08)
+  const input = $('#home-q');
+  const err = $('#home-q-err');
+  $('#home-search').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = input.value.trim();
+    if (chars(v) > 50) { err.textContent = '검색어는 50자 이하로 입력해주세요.'; err.hidden = false; input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    go(v ? `#/labs?${new URLSearchParams({ q: v })}` : '#/labs');
+  });
+  input.addEventListener('input', () => { if (chars(input.value.trim()) <= 50) { err.hidden = true; err.textContent = ''; input.removeAttribute('aria-invalid'); } });
+}
+
+// 로그인한 사람에게만 보이는 바로 가기: 지금 해야 할 일과 그 화면 링크
+function meStrip(u) {
+  if (!u) return '';
+  // 홈 맨 위에 두되 제목 순서(h1 먼저)를 지키려고 제목은 문단으로 쓴다
+  const box = (title, body, actions) => `
+    <section class="lk-panel home-me" aria-labelledby="me-title">
+      <div class="home-me__text"><p class="lk-item-title" id="me-title">${title}</p>${body}</div>
+      <div class="home-me__actions">${actions}</div>
+    </section>`;
+  const btn = (href, label, secondary = false) => `<a class="lk-button${secondary ? ' lk-button--secondary' : ''}" href="${href}">${label}</a>`;
+  const p = (t) => `<p class="lk-description">${t}</p>`;
+  if (!u.emailVerifiedAt) {
+    return box('학교 이메일 확인이 필요해요', p(u.role === 'student' ? '확인을 마쳐야 공고에 지원할 수 있어요.' : '확인을 마쳐야 연구실 소속 인증을 신청할 수 있어요.'), btn('#/account/email', '이메일 확인하기'));
+  }
+  if (u.role === 'student') {
+    if (!profileComplete(u)) return box('프로필을 완성해주세요', p('이름·학년과 학부생 자기확인을 입력하면 공고에 지원할 수 있어요.'), btn('#/account', '프로필 완성하기'));
+    const mine = Object.entries(S.apps).filter(([, a]) => a.studentId === u.id).sort((x, y) => y[1].submittedAt.localeCompare(x[1].submittedAt));
+    if (!mine.length) return box('아직 지원한 공고가 없어요', p('마감이 가까운 공고부터 살펴보세요.'), btn('#/labs', '연구실 탐색'));
+    const active = mine.filter(([, a]) => !TERMINAL.includes(appStatus(a))).length;
+    const list = `<ul class="me-apps">${mine.slice(0, 3).map(([key, a]) => { const r = S.recs[a.rec]; return `<li><a href="#/my?app=${key}"><span class="strong">${esc(S.labs[r.lab].name)}</span><span class="muted">${esc(r.title)}</span>${badge(appStatus(a))}</a></li>`; }).join('')}</ul>`;
+    const more = mine.length > 3 ? `<p class="lk-caption">외 ${mine.length - 3}건은 내 지원 현황에서 볼 수 있어요.</p>` : '';
+    const done = mine.length - active;
+    const summary = !active ? '모든 지원이 끝났어요.' : done ? `진행 중 ${active}건 · 끝난 지원 ${done}건` : `진행 중 ${active}건`;
+    return box(`내 지원 ${mine.length}건`, `${p(summary)}${list}${more}`, btn('#/my', '내 지원 현황'));
+  }
+  if (u.role === 'operator') {
+    const pending = Object.values(S.vreqs).filter((r) => r.status === '승인 대기' && S.labs[r.labId] && S.labs[r.labId].dept === u.department).length;
+    return box('연구실 인증 요청', p(pending ? `승인을 기다리는 요청이 ${pending}건 있어요.` : '승인을 기다리는 요청이 없어요.'), btn('#/ops/verifications', '인증 요청 검토'));
+  }
+  if (isApprovedAdmin(u)) {
+    const fresh = Object.values(S.apps).filter((a) => S.recs[a.rec] && S.recs[a.rec].lab === u.assignedLabId && appStatus(a) === '지원 완료').length;
+    return box(`${esc(S.labs[u.assignedLabId].name)} 관리자`, p(fresh ? `아직 검토를 시작하지 않은 지원(지원 완료)이 ${fresh}건 있어요.` : '아직 검토를 시작하지 않은 지원(지원 완료)은 없어요.'), btn('#/admin/applicants', '지원자 관리') + btn('#/admin/recruitments', '모집 공고 관리', true));
+  }
+  const pend = pendingReqOf(u);
+  if (pend) return box('연구실 소속 인증 승인 대기', p(`${esc(S.labs[pend.labId].name)} 인증 요청을 운영 보조가 검토하고 있어요. 승인되면 공고를 올릴 수 있어요.`), btn('#/verification', '신청 내용 보기', true));
+  const last = vreqsOf(u)[0];
+  if (last && last.status === '반려') return box('인증 요청이 반려됐어요', p('반려 사유를 확인하고 보완해서 다시 신청할 수 있어요.'), btn('#/verification', '보완해서 다시 신청'));
+  return box('연구실 소속 인증을 신청해주세요', p('승인되면 배정된 연구실의 공고를 올리고 지원자를 심사할 수 있어요.'), btn('#/verification', '연구실 인증 신청'));
+}
+
 // ---------- UI-01 연구실 탐색 ----------
 function publicRecs() { return Object.entries(S.recs).filter(([, r]) => r.published).map(([id, r]) => ({ id, ...r, status: recStatus(r) })); }
+// 게시된 공고의 연구실이 가진 연구 분야 (탐색 필터와 홈의 분야 바로 가기가 같은 목록을 쓴다)
+function recFields() { return [...new Set(publicRecs().flatMap((r) => S.labs[r.lab].fields))].sort((a, b) => a.localeCompare(b, 'ko')); }
 function viewLabs(view, q) {
-  const allFields = [...new Set(publicRecs().flatMap((r) => S.labs[r.lab].fields))].sort((a, b) => a.localeCompare(b, 'ko'));
+  const allFields = recFields();
   const statuses = ['모집 중', '모집 예정', '마감'];
   const qText = (q.get('q') || '').trim();
   let field = q.get('field') || '';
@@ -510,6 +661,8 @@ function demoDesc(u) {
 }
 function viewLogin(view, q) {
   const next = safeReturn(q.get('next') || '');
+  // 3.1.8: 돌아갈 곳이 외부 주소·허용되지 않은 내부 화면이었다면 로그인 뒤 탐색으로 대체한다
+  const fallback = q.get('next') && !next ? '#/labs' : '';
   const notice = sessionNotice || (next.startsWith('#/lab/') ? '지원하려면 로그인이 필요해요. 로그인하면 보던 공고로 돌아가요.' : next ? '로그인하면 하던 작업으로 돌아가요.' : '');
   sessionNotice = '';
   const nq = next ? `?next=${encodeURIComponent(next)}` : '';
@@ -533,7 +686,7 @@ function viewLogin(view, q) {
         <ul class="demo-list">${DEMO_ACCOUNTS.filter((id) => S.users[id]).map((id) => { const du = S.users[id]; return `<li><button type="button" class="demo-account" data-demo="${id}"><span class="demo-account__role">${roleLabel(du)}</span><span class="demo-account__desc">${esc(demoDesc(du))}</span><span class="lk-caption">${esc(du.email)}</span></button></li>`; }).join('')}</ul>
       </aside>
     </div>`;
-  const after = (u) => { go(next || homeOf(u), { replace: true }); toast(`${u.name || u.email}님, 로그인했어요.`); };
+  const after = (u) => { go(next || fallback || homeOf(u), { replace: true }); toast(`${u.name || u.email}님, 로그인했어요.`); };
   const formErr = $('#li-form-err');
   $('#li').addEventListener('input', (e) => { clearFieldError(e.target); formErr.hidden = true; });
   $('#li').addEventListener('submit', async (e) => {
@@ -554,6 +707,9 @@ function viewLogin(view, q) {
 function viewSignup(view, q) {
   const next = safeReturn(q.get('next') || '');
   const nq = next ? `?next=${encodeURIComponent(next)}` : '';
+  // 홈·바닥글의 '학생으로 가입'·'관리자 신청자로 가입'에서 온 경우 가입 유형을 미리 골라 둔다 (바꿀 수 있음)
+  const preset = ['student', 'admin'].includes(q.get('role')) ? q.get('role') : '';
+  const chk = (v) => (preset === v ? 'checked' : '');
   view.innerHTML = `
     <div class="auth auth--single">
       <section class="lk-panel auth__card">
@@ -562,8 +718,8 @@ function viewSignup(view, q) {
         <form id="su" class="auth__form" novalidate>
           <fieldset class="lk-field choice-group" id="su-role" aria-describedby="su-role-err">
             <legend class="lk-label">가입 유형<span class="req">필수</span></legend>
-            <label class="choice"><input type="radio" name="su-role" value="student"><span><span class="choice__title">학생</span><span class="choice__desc">연구실 공고를 찾고 지원해요</span></span></label>
-            <label class="choice"><input type="radio" name="su-role" value="admin"><span><span class="choice__title">연구실 관리자 신청</span><span class="choice__desc">소속 인증이 승인되면 공고와 지원자를 관리해요</span></span></label>
+            <label class="choice"><input type="radio" name="su-role" value="student" ${chk('student')}><span><span class="choice__title">학생</span><span class="choice__desc">연구실 공고를 찾고 지원해요</span></span></label>
+            <label class="choice"><input type="radio" name="su-role" value="admin" ${chk('admin')}><span><span class="choice__title">연구실 관리자 신청</span><span class="choice__desc">소속 인증이 승인되면 공고와 지원자를 관리해요</span></span></label>
             <p class="lk-error" id="su-role-err" hidden></p>
           </fieldset>
           ${field({ id: 'su-email', label: '학교 이메일', type: 'email', attrs: 'autocomplete="email" inputmode="email" placeholder="example@g.skku.edu"', help: 'skku.edu 또는 g.skku.edu 주소만 가입할 수 있어요.' })}
@@ -578,7 +734,9 @@ function viewSignup(view, q) {
   const role = () => (form.querySelector('input[name="su-role"]:checked') || {}).value;
   form.addEventListener('input', (e) => {
     clearFieldError(e.target.name === 'su-role' ? $('#su-role') : e.target);
-    guard = role() || $('#su-email').value || $('#su-password').value ? { title: '가입을 마치지 않았어요', body: '<p>지금 이동하면 입력한 내용이 사라져요.</p>' } : null;
+    // 미리 골라 둔 가입 유형은 사용자가 입력한 내용으로 보지 않는다
+    const changedRole = role() && role() !== preset;
+    guard = changedRole || $('#su-email').value || $('#su-password').value || $('#su-password2').value ? { title: '가입을 마치지 않았어요', body: '<p>지금 이동하면 입력한 내용이 사라져요.</p>' } : null;
   });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

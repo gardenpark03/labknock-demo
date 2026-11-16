@@ -3,10 +3,10 @@
 'use strict';
 
 let guard = null; // 미저장 입력 보호: { title, body }
-let lastHash = location.hash || '#/labs';
+let lastHash = location.hash || '#/';
 
 function parseHash() {
-  const raw = location.hash.slice(1) || '/labs';
+  const raw = location.hash.slice(1) || '/';
   const [path, qs] = raw.split('?');
   return { parts: path.split('/').filter(Boolean), q: new URLSearchParams(qs || ''), raw };
 }
@@ -54,8 +54,15 @@ window.addEventListener('storage', (e) => {
   S = load();
   const pop = $('#account-pop');
   if (guard || $('#dialog').open || (pop && !pop.hidden) || document.querySelector('[aria-busy="true"]')) return;
+  // 검색어·로그인 정보처럼 저장 보호가 없는 입력도 입력하는 동안에는 다시 그려 지우지 않는다
+  if (document.activeElement && document.activeElement.matches('#view input:not([type="radio"]):not([type="checkbox"]), #view textarea')) return;
+  // 다시 그려도 펼친 질문과 아직 적용하지 않은 검색어는 그대로 둔다
+  const opened = $$('#view details[open]').map((d) => d.id).filter(Boolean);
+  const typed = $$('#view input[type="text"], #view input[type="search"], #view input[type="email"], #view input:not([type])').filter((i) => i.id && i.value !== i.defaultValue).map((i) => [i.id, i.value]);
   bgRender = true;
   try { render(); } finally { bgRender = false; }
+  opened.forEach((id) => { const d = document.getElementById(id); if (d) d.open = true; });
+  typed.forEach(([id, v]) => { const i = document.getElementById(id); if (i) i.value = v; });
 });
 
 // ---------- 머리글 ----------
@@ -64,15 +71,42 @@ function navItems(u) {
   if (u.role === 'operator') return [['인증 요청 검토', '#/ops/verifications', 'ops']];
   return [['모집 공고', '#/admin/recruitments', 'rec'], ['지원자 관리', '#/admin/applicants', 'app']];
 }
+// 로그인 링크: 지금 화면이 허용된 복귀 목적지면 로그인 뒤 돌아오도록 넘긴다 (FR-07-13, 3.1.8)
+function loginQuery() {
+  const { parts, q } = parseHash();
+  const next = ['login', 'signup'].includes(parts[0]) ? safeReturn(q.get('next') || '') : safeReturn(location.hash);
+  return next ? `?next=${encodeURIComponent(next)}` : '';
+}
+// 바닥글 메뉴: 계정 역할에 맞는 바로 가기만 보여 준다 (권한 없는 화면으로 보내지 않는다)
+function footerCols(u) {
+  const cols = [['서비스', [['연구실 탐색', '#/labs'], ['학생 지원 방법', '#/?s=how'], ['자주 묻는 질문', '#/?s=faq']]]];
+  if (!u) {
+    cols.push(['학생', [['학생으로 가입', '#/signup?role=student'], ['로그인', `#/login${loginQuery()}`]]]);
+    cols.push(['연구실', [['연구실 관리자 안내', '#/?s=lab'], ['관리자 신청자로 가입', '#/signup?role=admin']]]);
+  } else if (u.role === 'student') {
+    cols.push(['내 활동', [['내 지원 현황', '#/my'], ['내 정보', '#/account']]]);
+    cols.push(['연구실', [['연구실 관리자 안내', '#/?s=lab']]]);
+  } else if (u.role === 'operator') {
+    cols.push(['운영', [['인증 요청 검토', '#/ops/verifications'], ['내 정보', '#/account']]]);
+  } else {
+    cols.push(['연구실', isApprovedAdmin(u)
+      ? [['모집 공고 관리', '#/admin/recruitments'], ['지원자 관리', '#/admin/applicants'], ['연구실 소속 인증', '#/verification'], ['내 정보', '#/account']]
+      : [['연구실 소속 인증', '#/verification'], ['내 정보', '#/account']]]);
+  }
+  return cols;
+}
+function renderFooter(u) {
+  $('#footer-nav').innerHTML = footerCols(u).map(([title, links], i) => `
+    <div class="footer-col"><h2 class="footer-col__title" id="footer-col-${i}">${title}</h2>
+      <ul aria-labelledby="footer-col-${i}">${links.map(([label, href]) => `<li><a href="${href}">${label}</a></li>`).join('')}</ul></div>`).join('');
+}
 function renderHeader(active, u) {
   $('#nav').innerHTML = navItems(u).map(([label, href, key]) => `<a href="${href}" ${key === active ? 'aria-current="page"' : ''}>${label}</a>`).join('');
-  $('[data-home]').setAttribute('href', homeOf(u));
+  renderFooter(u);
   const box = $('#account');
   if (!u) {
     // 로그인·가입 화면에서는 이미 정해진 복귀 목적지를 그대로 넘긴다
-    const { parts, q } = parseHash();
-    const next = ['login', 'signup'].includes(parts[0]) ? safeReturn(q.get('next') || '') : safeReturn(location.hash);
-    const nq = next ? `?next=${encodeURIComponent(next)}` : '';
+    const nq = loginQuery();
     box.innerHTML = `<a class="lk-button lk-button--secondary small-btn" href="#/login${nq}">로그인</a><a class="lk-button small-btn signup-link" href="#/signup${nq}">회원가입</a>`;
     return;
   }
@@ -115,7 +149,7 @@ function renderHeader(active, u) {
     closeAccountMenu(true);
     if (!(await confirmLeave())) return;
     api.logout();
-    go('#/labs', { replace: true });
+    go('#/', { replace: true });   // 로그아웃은 탐색 조건도 지운다 (FR-01-07.3)
     toast('로그아웃했어요.');
   });
 }
@@ -147,6 +181,26 @@ function render() {
     prevView = { path, key };
     return;
   }
+  // 홈: 안내 구역 바로 가기(#/?s=how 등)는 그 구역으로, 그 밖에는(로고를 다시 누른 경우 포함) 맨 위로 간다
+  if ((parts[0] || 'home') === 'home' && parts.length <= 1) {
+    const s = q.get('s') || '';
+    const sec = /^(how|lab|faq)$/.test(s) ? document.getElementById(`home-${s}`) : null;
+    if (sec) {
+      // 뒤로 가기 때 브라우저의 스크롤 복원이 끝난 다음에 구역으로 옮긴다
+      requestAnimationFrame(() => {
+        if (!sec.isConnected) return;
+        sec.scrollIntoView({ block: 'start' });
+        const h2 = sec.querySelector('h2');
+        if (h2) focusQuiet(h2);
+      });
+    } else {
+      window.scrollTo(0, 0);
+      const h1 = $('#view h1');
+      if (prevView.path !== null && h1) focusQuiet(h1);
+    }
+    prevView = { path, key };
+    return;
+  }
   if (path !== prevView.path) {
     window.scrollTo(0, 0);
     const h = $('#view h1');
@@ -173,18 +227,18 @@ const TITLES = { labs: '연구실 탐색', lab: '연구실 상세', apply: '지�
 function renderView() {
   clearPageTimers();
   closeAccountMenu();
-  lastHash = location.hash || '#/labs';
+  lastHash = location.hash || '#/';
   if (!bgRender) $('#toast').hidden = true;
   guard = null;
   const { parts, q } = parseHash();
   const view = $('#view');
-  const page = parts[0] || 'labs';
+  const page = parts[0] || 'home';
   const u = currentUser();
 
-  // 로그인이 필요한 화면은 로그인 화면으로 보내고, 끝나면 허용된 목적지로만 돌아온다 (FR-07-13)
+  // 로그인이 필요한 화면은 로그인 화면으로 보낸다. 로그인 뒤 허용된 목적지면 그곳으로,
+  // 그 밖의 보호 화면이면 탐색으로 대체한다 (FR-07-13, 3.1.8). 판단은 로그인 화면이 한다
   if (PROTECTED.includes(page) && !u) {
-    const next = safeReturn(location.hash);
-    history.replaceState(null, '', `#/login${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+    history.replaceState(null, '', `#/login?next=${encodeURIComponent(location.hash)}`);
     return renderView();
   }
   if ((page === 'login' || page === 'signup') && u) { history.replaceState(null, '', homeOf(u)); return renderView(); }
@@ -194,6 +248,10 @@ function renderView() {
   const sub = parts[1];
   document.title = `${TITLES[page === 'admin' || page === 'ops' || (page === 'account' && sub) ? sub : page] || '랩노크'} · 랩노크`;
   switch (page) {
+    case 'home':
+      if (parts.length > 1) break;
+      document.title = '랩노크 · 학부연구생 모집과 지원을 한 곳에서';
+      renderHeader('home', u); return viewHome(view, q, u);
     case 'labs': renderHeader('labs', u); return viewLabs(view, q);
     case 'lab': renderHeader('labs', u); return viewDetail(view, parts[1], parts[2], q, u);
     case 'apply': renderHeader('labs', u); return u.role === 'student' ? viewApply(view, parts[1], u) : notAllowed(view, u);
@@ -228,8 +286,10 @@ $('#reset').addEventListener('click', async () => {
   if (!ok) return;
   guard = null;
   await resetAll();
-  go('#/labs', { replace: true });
+  go('#/', { replace: true });
   toast('데모 데이터를 처음 상태로 되돌렸어요.');
 });
 
+// 주소 없이 열면 홈 주소(#/)로 맞춰, 로고를 눌러도 같은 화면이 이력에 한 번 더 쌓이지 않게 한다
+if (!location.hash) history.replaceState(null, '', '#/');
 render();

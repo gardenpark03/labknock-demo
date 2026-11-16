@@ -9,3 +9,5 @@
 - 데이터는 이 브라우저에만 저장되고, 화면 아래 '데모 데이터 초기화'로 처음 상태로 돌아갑니다.
 
 글꼴: Pretendard (SIL Open Font License 1.1, `assets/fonts/OFL.txt`)
+
+팀원 작업 방법과 화면별 코드 위치는 [CONTRIBUTING.md](CONTRIBUTING.md)에 있습니다.

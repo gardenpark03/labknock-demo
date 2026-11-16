@@ -1,0 +1,12 @@
+{
+  "name": "labknock-demo",
+  "private": true,
+  "description": "랩노크 웹 프로토타입의 자동 시험 (사이트 자체는 빌드 없이 index.html로 동작)",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

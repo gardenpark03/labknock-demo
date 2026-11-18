@@ -1220,17 +1220,27 @@ function viewReview(view, q, u) {
     // 서버가 확인창에서 본 상태(s)와 허용 전이를 다시 검사하고, 합격이면 공고를 잠근 채 정원을 세어 저장과 한 번에 확정한다 (FR-06-07)
     const res = await busy($('#rv-confirm'), '저장 중…', () => api.decideApplication(sel, rec, s, pick));
     const outcome = res.ok ? 'ok' : res.code;
+    if (outcome === 'ok') { saved(`${cur.student}의 지원 상태를 '${pick}'(으)로 저장했어요.`); return; }
     if (outcome === 'full' && $('#rv-err')) { capacityError(s); return; }
-    if (outcome !== 'ok') {
-      render();
-      toast(outcome === 'network' ? res.message : outcome === 'login' ? '로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.' : '다른 곳에서 상태가 이미 바뀌었어요. 최신 상태를 확인하세요.', true);
-      return;
-    }
-    // FR-06-08.5: 바뀐 상태가 현재 필터에서 빠지면 선택을 해제한다
+    if (outcome === 'login') { render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
+    if (outcome === 'network') { render(); toast(res.message, true); return; }
+    await showLatest('다른 곳에서 상태가 먼저 바뀌어 저장하지 않았어요.');
+  });
+  // FR-06-08.5: 바뀐 상태가 현재 필터에서 빠지면 선택을 해제한다
+  const saved = (msg) => {
     const stays = !filter || filter === pick;
     go(stays ? link({ app: sel }) : link({}), { replace: true });
-    toast(`${cur.student}의 지원 상태를 '${pick}'(으)로 저장했어요.`);
-  });
+    toast(msg);
+  };
+  // 거절된 뒤 최신 상태를 받아 보여 준다. 필터에서 빠졌으면 '찾을 수 없음' 대신 선택을 풀고 이유를 알린다 (FR-06-03.2, FR-06-08.5)
+  const showLatest = async (prefix) => {
+    try { await syncState(); } catch { /* 연결이 안 되면 마지막으로 받은 내용으로 판단한다 */ }
+    const fresh = S.apps[sel];
+    const live = fresh ? appStatus(fresh) : null;
+    if (!live) { go(link({}), { replace: true }); toast(`${prefix} 이 지원서는 더 이상 볼 수 없어요.`, true); return; }
+    if (filter && live !== filter) { go(link({}), { replace: true }); toast(`${prefix} 지금은 '${live}' 상태라 '${filter}' 필터에서 빠져 선택을 해제했어요.`, true); return; }
+    render(); toast(`${prefix} 지금은 '${live}' 상태예요. 최신 상태에서 다음 단계를 다시 선택하세요.`, true);
+  };
 }
 
 // ---------- 운영 보조: 연구실 인증 요청 검토 (FR-07-09~12) ----------

@@ -1088,14 +1088,35 @@ function viewRecruit(view, q, u) {
     else if (fresh && fresh.savedAt !== r.savedAt) why = `다른 곳에서 이 공고를 먼저 저장했어요(마지막 저장 ${fmtDateTime(fresh.savedAt)}).`;
     showCallout(alertBox, '저장하지 않았어요', `${why} 서버에 저장된 내용은 바뀌지 않았어요. 최신 내용을 확인한 뒤 다시 시도하세요.`, '최신 내용 불러오기', reloadLatest);
   };
+  // 응답을 받지 못하면 성공·실패를 단정하지 않고 서버에서 결과를 다시 확인한다. 같은 변경을 새로 보내지 않는다 (4.9, FR-X-06)
+  const checkResult = async (idOrNull, action, data, before, msg) => {
+    try { await syncState(); } catch {
+      showCallout(alertBox, '저장 결과를 확인하지 못했어요', '서버 응답을 받지 못해 저장됐는지 아직 알 수 없어요. 연결을 확인한 뒤 결과를 확인하세요. 같은 내용을 다시 저장하기 전에 먼저 확인해 주세요.', '저장 결과 확인',
+        (b) => busy(b, '확인 중…', () => checkResult(idOrNull, action, data, before, msg)));
+      return;
+    }
+    const savedId = idOrNull
+      ? (S.recs[idOrNull] && S.recs[idOrNull].savedAt !== r.savedAt && recApplied(S.recs[idOrNull], action, data) ? idOrNull : null)
+      : Object.keys(S.recs).find((k) => !before.has(k) && S.recs[k].lab === LAB && S.recs[k].title === data.title);
+    if (savedId) { guard = null; go(`#/admin/recruitments?rec=${savedId}`, { replace: true }); toast(`저장된 것으로 확인됐어요. ${msg}`); return; }
+    if (idOrNull && S.recs[idOrNull] && S.recs[idOrNull].savedAt !== r.savedAt) { explainRejected(); return; }
+    alertBox.hidden = true;
+    toast('저장되지 않은 것으로 확인됐어요. 입력한 내용은 그대로 있으니 다시 시도하세요.', true);
+  };
   // 저장할 때마다 마지막 저장 시각과 변경 이력(주체·시각·종류·변경 전후)을 남긴다 (FR-05-07)
   // 서버가 권한·고정 규칙·입력을 다시 검사하고, 화면을 연 뒤 다른 곳에서 먼저 저장됐으면 덮어쓰지 않는다 (마지막 저장 시각으로 버전 확인)
   const commit = async (btn, idOrNull, action, data, msg, detail = '') => {
     alertBox.hidden = true;
-    const res = await busy(btn, '저장 중…', () => api.saveRecruitment(idOrNull, idOrNull ? r.savedAt : null, action, data, detail));
+    const before = new Set(Object.keys(S.recs));
+    // 처리 중에는 누른 버튼뿐 아니라 다른 동작 버튼도 막는다 (FR-X-06)
+    const others = $$('.form-actions button', form).filter((b) => b !== btn && !b.disabled);
+    others.forEach((b) => { b.disabled = true; });
+    let res;
+    try { res = await busy(btn, '저장 중…', () => api.saveRecruitment(idOrNull, idOrNull ? r.savedAt : null, action, data, detail)); }
+    finally { others.forEach((b) => { if (b.isConnected) b.disabled = false; }); }
     if (res.ok) { guard = null; go(`#/admin/recruitments?rec=${res.id}`, { replace: true }); toast(msg); return; }
     if (res.errors) { showErrors(res.errors); return; }
-    if (res.code === 'network') { toast(res.message, true); return; }
+    if (res.code === 'network') { await checkResult(idOrNull, action, data, before, msg); return; }
     if (res.code === 'login') { guard = null; render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
     await explainRejected();
   };
@@ -1145,6 +1166,13 @@ function recActions(r, st, locked, isNew) {
 }
 // 날짜(YYYY-MM-DD)의 다음 날. 기간 연장 칸은 현재 마감일 다음 날부터 고를 수 있다 (FR-05-05)
 const nextDay = (iso) => (iso ? new Date(Date.parse(`${iso}T00:00:00Z`) + 864e5).toISOString().slice(0, 10) : '');
+// 응답을 받지 못한 뒤 다시 받은 공고에 이번 요청 내용이 반영됐는지 본다 (4.9)
+function recApplied(fresh, action, data) {
+  if (action === 'close') return !!fresh.earlyClosedAt;
+  if (action === 'extend') return fresh.end === data.end;
+  if (action === 'publish' && !fresh.published) return false;
+  return Object.keys(REC_FIELDS).every((k) => String(fresh[k] ?? '') === String(data[k] ?? ''));
+}
 // 거절 이유나 결과 미확인을 화면 안에 남기고 다음 동작 버튼을 둔다 (4.9)
 function showCallout(el, title, text, label, onClick) {
   el.innerHTML = `<p class="strong">${esc(title)}</p><p>${esc(text)}</p>${label ? `<div class="row" style="margin-top:8px"><button type="button" class="lk-button lk-button--secondary">${esc(label)}</button></div>` : ''}`;
@@ -1222,6 +1250,7 @@ function viewReview(view, q, u) {
     <section class="section">${TERMINAL.includes(s) ? '<p class="lk-help">최종 결과가 확정된 지원서는 상태를 바꿀 수 없어요.</p>' : `
       <h3>다음 단계 선택</h3><div class="next-steps" role="group" aria-label="다음 단계">${next.map((x) => `<button type="button" class="lk-button" aria-pressed="false" data-next="${x}">${x === '검토 중' ? '검토 시작' : x}</button>`).join('')}</div>
       <p class="lk-error" id="rv-err" role="alert" hidden style="margin-top:12px"></p>
+      <div class="callout" id="rv-alert" role="alert" hidden style="margin-top:12px"></div>
       <p class="lk-help" id="rv-hint" style="margin-top:12px">다음 단계를 먼저 선택하세요.</p>
       <div class="form-actions" style="justify-content:flex-end;margin-top:16px"><button type="button" class="lk-button" id="rv-confirm" disabled aria-describedby="rv-hint">변경 내용 확인</button></div>`}</section>`;
   hydrateFiles(box);
@@ -1245,13 +1274,19 @@ function viewReview(view, q, u) {
     const final = TERMINAL.includes(pick);
     const ok = await confirmDialog({ title: `${pick === '검토 중' ? '검토를 시작' : `'${pick}'(으)로 변경`}할까요?`, body: `<p><b>${esc(cur.student)}</b> · 접수 ${cur.id}</p><p>${s} → <b>${pick}</b></p><p>${final ? '최종 결과는 저장 후 되돌릴 수 없어요.' : '저장한 상태는 이전 단계로 되돌릴 수 없어요.'}</p>`, ok: '변경 저장' });
     if (!ok) return;
+    $('#rv-alert').hidden = true;
+    // 처리 중에는 다른 다음 단계 버튼도 막는다 (FR-X-06)
+    const steps = $$('[data-next]', box);
+    steps.forEach((b) => { b.disabled = true; });
     // 서버가 확인창에서 본 상태(s)와 허용 전이를 다시 검사하고, 합격이면 공고를 잠근 채 정원을 세어 저장과 한 번에 확정한다 (FR-06-07)
-    const res = await busy($('#rv-confirm'), '저장 중…', () => api.decideApplication(sel, rec, s, pick));
+    let res;
+    try { res = await busy($('#rv-confirm'), '저장 중…', () => api.decideApplication(sel, rec, s, pick)); }
+    finally { steps.forEach((b) => { if (b.isConnected) b.disabled = false; }); }
     const outcome = res.ok ? 'ok' : res.code;
     if (outcome === 'ok') { saved(`${cur.student}의 지원 상태를 '${pick}'(으)로 저장했어요.`); return; }
     if (outcome === 'full' && $('#rv-err')) { capacityError(s); return; }
     if (outcome === 'login') { render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
-    if (outcome === 'network') { render(); toast(res.message, true); return; }
+    if (outcome === 'network') { await checkResult(pick); return; }
     await showLatest('다른 곳에서 상태가 먼저 바뀌어 저장하지 않았어요.');
   });
   // FR-06-08.5: 바뀐 상태가 현재 필터에서 빠지면 선택을 해제한다
@@ -1268,6 +1303,18 @@ function viewReview(view, q, u) {
     if (!live) { go(link({}), { replace: true }); toast(`${prefix} 이 지원서는 더 이상 볼 수 없어요.`, true); return; }
     if (filter && live !== filter) { go(link({}), { replace: true }); toast(`${prefix} 지금은 '${live}' 상태라 '${filter}' 필터에서 빠져 선택을 해제했어요.`, true); return; }
     render(); toast(`${prefix} 지금은 '${live}' 상태예요. 최신 상태에서 다음 단계를 다시 선택하세요.`, true);
+  };
+  // 응답을 받지 못하면 성공·실패를 단정하지 않고 서버에서 지금 상태를 다시 확인한다. 같은 변경을 새로 보내지 않는다 (4.9)
+  const checkResult = async (next) => {
+    try { await syncState(); } catch {
+      showCallout($('#rv-alert'), '처리 결과를 확인하지 못했어요', '서버 응답을 받지 못해 상태가 바뀌었는지 아직 알 수 없어요. 연결을 확인한 뒤 결과를 확인하세요. 다시 저장하기 전에 먼저 확인해 주세요.', '처리 결과 확인',
+        (b) => busy(b, '확인 중…', () => checkResult(next)));
+      return;
+    }
+    const live = S.apps[sel] ? appStatus(S.apps[sel]) : null;
+    if (live === next) { saved(`저장된 것으로 확인됐어요. ${cur.student}의 지원은 지금 '${next}' 상태예요.`); return; }
+    if (live === s) { $('#rv-alert').hidden = true; toast('저장되지 않은 것으로 확인됐어요. 다음 단계를 다시 확인하고 저장하세요.', true); return; }
+    await showLatest('다른 곳에서 상태가 먼저 바뀌었어요.');
   };
 }
 

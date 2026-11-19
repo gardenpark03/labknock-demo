@@ -1023,10 +1023,11 @@ function viewRecruit(view, q, u) {
             ${recField('capacity', r.capacity, ro, '게시 시 필수', '1~99명', '', 'number')}
             ${recField('start', r.start, ro, '게시 시 필수', '', '', 'date')}
             ${locked && !closed
-              ? recField('end', r.end, false, '', `현재 마감일 ${fmtDate(r.end)} · 더 늦은 날짜로만 연장`, '', 'date', '새 마감일')
+              ? recField('end', r.end, false, '', `현재 마감일 ${fmtDate(r.end)} · 더 늦은 날짜로만 연장`, '', 'date', '새 마감일', `min="${nextDay(r.end)}"`)
               : recField('end', r.end, closed, '게시 시 필수', '', '', 'date')}
           </div>
           ${isNew ? '<p class="lk-help" id="publish-hint" style="margin-top:16px">게시하려면 먼저 초안을 저장하세요. 저장한 공고만 게시할 수 있어요.</p>' : ''}
+          <div class="callout" id="rec-alert" role="alert" hidden style="margin-top:16px"></div>
           <div class="form-actions" style="justify-content:flex-end">${recActions(r, st, locked, isNew)}</div>
         </form>
         ${isNew ? '' : `<section class="log-section"><h3>변경 이력</h3>${(r.log || []).length
@@ -1070,15 +1071,33 @@ function viewRecruit(view, q, u) {
   };
   const shown = (k, v) => (v === '' || v == null ? '(빈 값)' : k === 'start' || k === 'end' ? fmtDate(v) : String(v));
   const diff = (d) => Object.keys(REC_FIELDS).filter((k) => String(d[k] ?? '') !== String(r[k] ?? '')).map((k) => `${REC_FIELDS[k]} ${shown(k, r[k])} → ${shown(k, d[k])}`).join(', ');
+  const alertBox = $('#rec-alert');
+  // 미저장 입력이 있으면 버린다는 확인을 받고 서버의 최신 공고로 다시 그린다 (FR-05-09)
+  const reloadLatest = async () => {
+    if (guard && !(await confirmDialog({ title: '최신 내용을 불러올까요?', body: '<p>지금 입력한 내용은 저장되지 않고 서버에 저장된 최신 내용으로 바뀌어요.</p>', ok: '최신 내용 불러오기', cancel: '계속 작성' }))) return;
+    guard = null; render();
+  };
+  // 거절된 뒤 서버의 최신 공고와 비교해 이유를 알려 준다. 저장된 값은 덮어쓰지 않았고 입력은 그대로 둔다 (FR-05-09, 4.9)
+  const explainRejected = async () => {
+    try { await syncState(); } catch { /* 연결이 안 되면 마지막으로 받은 내용으로 판단한다 */ }
+    const fresh = isNew ? null : S.recs[sel];
+    let why = '공고 상태가 바뀌어 저장하지 못했어요.';
+    if (!isNew && !fresh) why = '이 공고를 더 이상 관리할 수 없어요.';
+    else if (fresh && recStatus(fresh) === '마감' && !closed) why = '그사이 모집이 마감됐어요. 마감된 공고는 바꿀 수 없어요.';
+    else if (fresh && !locked && appsOf(sel).length > 0) why = '그사이 첫 지원이 들어와 공고 항목이 고정됐어요. 이제 기간 연장과 조기 마감만 할 수 있어요.';
+    else if (fresh && fresh.savedAt !== r.savedAt) why = `다른 곳에서 이 공고를 먼저 저장했어요(마지막 저장 ${fmtDateTime(fresh.savedAt)}).`;
+    showCallout(alertBox, '저장하지 않았어요', `${why} 서버에 저장된 내용은 바뀌지 않았어요. 최신 내용을 확인한 뒤 다시 시도하세요.`, '최신 내용 불러오기', reloadLatest);
+  };
   // 저장할 때마다 마지막 저장 시각과 변경 이력(주체·시각·종류·변경 전후)을 남긴다 (FR-05-07)
   // 서버가 권한·고정 규칙·입력을 다시 검사하고, 화면을 연 뒤 다른 곳에서 먼저 저장됐으면 덮어쓰지 않는다 (마지막 저장 시각으로 버전 확인)
   const commit = async (btn, idOrNull, action, data, msg, detail = '') => {
+    alertBox.hidden = true;
     const res = await busy(btn, '저장 중…', () => api.saveRecruitment(idOrNull, idOrNull ? r.savedAt : null, action, data, detail));
     if (res.ok) { guard = null; go(`#/admin/recruitments?rec=${res.id}`, { replace: true }); toast(msg); return; }
     if (res.errors) { showErrors(res.errors); return; }
     if (res.code === 'network') { toast(res.message, true); return; }
     if (res.code === 'login') { guard = null; render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
-    toast('다른 곳에서 이 공고가 먼저 바뀌었어요. 화면을 새로 열어 최신 내용을 확인한 뒤 다시 시도하세요.', true);
+    await explainRejected();
   };
 
   on('#save-draft', (e) => {
@@ -1111,11 +1130,11 @@ function viewRecruit(view, q, u) {
     if (ok) commit(btn, sel, 'close', {}, '모집을 조기 마감했어요.');
   });
 }
-function recField(k, value, ro, req, note, cls = '', type = 'text', label = REC_FIELDS[k]) {
+function recField(k, value, ro, req, note, cls = '', type = 'text', label = REC_FIELDS[k], attrs = '') {
   if (ro && type === 'date') { type = 'text'; value = fmtDate(value); }
   const marks = ro ? '<span class="opt">읽기 전용</span>' : `${req ? `<span class="req">${req}</span>` : ''}${note ? `<span class="opt">${note}</span>` : ''}`;
   return `<div class="lk-field ${cls}"><label class="lk-label" for="f-${k}">${label}${marks}</label>
-    <input class="lk-input" id="f-${k}" type="${type}" value="${esc(value)}" aria-describedby="f-${k}-err" ${ro ? 'readonly' : ''} ${type === 'number' ? 'min="1" max="99" step="1" inputmode="numeric"' : ''}>
+    <input class="lk-input" id="f-${k}" type="${type}" value="${esc(value)}" aria-describedby="f-${k}-err" ${ro ? 'readonly' : ''} ${type === 'number' ? 'min="1" max="99" step="1" inputmode="numeric"' : ''} ${attrs}>
     <p class="lk-error" id="f-${k}-err" hidden></p></div>`;
 }
 function recActions(r, st, locked, isNew) {
@@ -1123,6 +1142,15 @@ function recActions(r, st, locked, isNew) {
   if (!r.published || isNew) return `<button type="button" class="lk-button lk-button--secondary" id="save-draft">초안 저장</button><button type="button" class="lk-button" id="publish" ${isNew ? 'disabled aria-describedby="publish-hint"' : ''}>공고 게시</button>`;
   if (locked) return `<button type="button" class="lk-button" id="extend">기간 연장</button>${st === '모집 중' ? '<button type="button" class="lk-button lk-button--secondary danger-outline" id="early-close">조기 마감</button>' : ''}`;
   return `<button type="button" class="lk-button" id="save-edit">변경 저장</button>${st === '모집 중' ? '<button type="button" class="lk-button lk-button--secondary danger-outline" id="early-close">조기 마감</button>' : ''}`;
+}
+// 날짜(YYYY-MM-DD)의 다음 날. 기간 연장 칸은 현재 마감일 다음 날부터 고를 수 있다 (FR-05-05)
+const nextDay = (iso) => (iso ? new Date(Date.parse(`${iso}T00:00:00Z`) + 864e5).toISOString().slice(0, 10) : '');
+// 거절 이유나 결과 미확인을 화면 안에 남기고 다음 동작 버튼을 둔다 (4.9)
+function showCallout(el, title, text, label, onClick) {
+  el.innerHTML = `<p class="strong">${esc(title)}</p><p>${esc(text)}</p>${label ? `<div class="row" style="margin-top:8px"><button type="button" class="lk-button lk-button--secondary">${esc(label)}</button></div>` : ''}`;
+  el.hidden = false;
+  if (label) $('button', el).addEventListener('click', (e) => onClick(e.currentTarget));
+  el.scrollIntoView({ block: 'nearest' });
 }
 
 // ---------- UI-06 지원자 심사 ----------

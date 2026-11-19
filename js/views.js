@@ -391,7 +391,10 @@ function viewDetail(view, labId, recId, q, u) {
   const area = $('#apply-area');
   const here = encodeURIComponent(location.hash);
   const mine = u && u.role === 'student' ? myAppFor(u, recId) : null;
-  const disabledBtn = (label) => `<button class="lk-button" disabled>${label}</button>`;
+  // 지원할 수 없는 이유를 버튼에 연결해 화면 낭독기도 함께 읽게 한다 (FR-02-04)
+  const disabledBtn = (label) => `<button class="lk-button" disabled aria-describedby="apply-reason">${label}</button>`;
+  // 조기 마감 시각은 UTC로 오므로 한국 날짜로 바꿔 표시한다
+  const kstDate = (iso) => fmtDate(new Date(new Date(iso).getTime() + 9 * 36e5).toISOString());
   const until = `<p class="lk-help deadline"><span class="dday">${dday(r)}</span>${fmtDate(r.end)}까지 지원할 수 있어요</p>`;
   if (mine) {
     const s = appStatus(mine);
@@ -400,9 +403,9 @@ function viewDetail(view, labId, recId, q, u) {
   } else if (u && u.role !== 'student') {
     area.innerHTML = '<p class="lk-help">지원은 학생 계정 전용 기능이에요. 이 계정은 공고를 조회만 할 수 있어요.</p>';
   } else if (st === '모집 예정') {
-    area.innerHTML = `<div class="stack">${disabledBtn('지원서 작성')}<p class="lk-help">${fmtDate(r.start)}부터 지원할 수 있어요.</p></div>`;
+    area.innerHTML = `<div class="stack">${disabledBtn('지원서 작성')}<p class="lk-help" id="apply-reason">모집 시작 전이에요. ${fmtDate(r.start)} 00:00부터 지원할 수 있어요.</p></div>`;
   } else if (st === '마감') {
-    area.innerHTML = `<div class="stack">${disabledBtn('지원서 작성')}<p class="lk-help">${r.earlyClosedAt ? '연구실이 모집을 조기 마감했어요.' : '모집기간이 끝났어요.'}</p></div>`;
+    area.innerHTML = `<div class="stack">${disabledBtn('지원서 작성')}<p class="lk-help" id="apply-reason">${r.earlyClosedAt ? `연구실이 ${kstDate(r.earlyClosedAt)}에 모집을 조기 마감했어요.` : `모집기간이 끝났어요. 마감일 ${fmtDate(r.end)} 23:59가 지났어요.`}</p></div>`;
   } else if (!u) {
     area.innerHTML = `<div class="stack">${until}<p class="lk-help">학교 이메일로 가입한 학생만 지원할 수 있어요.</p><a class="lk-button" id="login" href="#/login?next=${here}">로그인 후 지원</a></div>`;
   } else if (!u.emailVerifiedAt) {

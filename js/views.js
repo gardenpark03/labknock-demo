@@ -361,7 +361,8 @@ function viewLabs(view, q) {
 function viewDetail(view, labId, recId, q, u) {
   const r = S.recs[recId];
   if (!r || !r.published || r.lab !== labId) {
-    view.innerHTML = panelMsg('공고를 찾을 수 없어요.', '삭제됐거나 아직 게시되지 않은 공고예요.', '<a class="lk-button lk-button--secondary" href="#/labs">연구실 탐색</a>');
+    // 초안·없는 공고·식별자 불일치를 같은 문구로 처리해 공고가 있는지 드러내지 않는다 (FR-02-01)
+    view.innerHTML = panelMsg('공고를 찾을 수 없어요.', '게시되지 않았거나 주소가 올바르지 않은 공고예요. 연구실 탐색에서 다시 찾아주세요.', '<a class="lk-button lk-button--secondary" href="#/labs">연구실 탐색</a>');
     return;
   }
   const lab = S.labs[labId];

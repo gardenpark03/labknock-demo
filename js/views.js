@@ -337,8 +337,17 @@ function viewLabs(view, q) {
     $('#results').innerHTML = '<p class="lk-description" style="margin-top:24px">검색어를 고친 뒤 다시 검색하세요.</p>';
     return;
   }
+  const all = publicRecs();
+  // 게시된 공고가 하나도 없으면 조건 탓이 아니므로 '공고 없음'으로 구분한다.
+  // 적용한 조건이 있으면 0건 결과처럼 필터 초기화도 함께 제공한다 (FR-01-06)
+  if (!all.length) {
+    const hasFilter = !!(qText || field || status);
+    $('#results').innerHTML = panelMsg('아직 게시된 모집 공고가 없어요.', '연구실이 모집 공고를 게시하면 이곳에 표시돼요.', hasFilter ? '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>' : '');
+    const er = $('#empty-reset'); if (er) er.addEventListener('click', () => go('#/labs'));
+    return;
+  }
   const nq = norm(qText);
-  const rows = publicRecs()
+  const rows = all
     .filter((r) => { const lab = S.labs[r.lab]; return !nq || norm(lab.name).includes(nq) || lab.fields.some((f) => norm(f).includes(nq)); })
     .filter((r) => !field || S.labs[r.lab].fields.includes(field))
     .filter((r) => !status || r.status === status)

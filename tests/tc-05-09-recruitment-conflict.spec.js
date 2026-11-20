@@ -1,6 +1,6 @@
 // TC-05-09 공고 동시 수정 충돌: 오래된 저장은 덮어쓰지 않고, 입력을 유지한 채 이유와 최신 내용 보기를 안내한다.
 const { test, expect } = require('@playwright/test');
-const { open, settle, loginAs, logout, confirmDialog, resetDemo, SAMPLE_PDF } = require('./helpers');
+const { open, settle, loginAs, logout, confirmDialog, resetDemo, SAMPLE_PDF, clientAs, DEMO } = require('./helpers');
 
 test.beforeEach(async () => { await resetDemo(); });
 
@@ -18,10 +18,12 @@ test('TC-05-09 다른 곳에서 먼저 저장한 공고는 덮어쓰지 않고, 
   await a.click('#save-draft');
   await expect(a.locator('#toast')).toContainText('초안을 저장했어요');
 
-  // B창의 오래된 저장은 거절되고, 이유가 화면 안에 남고, 입력은 그대로다
+  // 재조회 연결이 끊겨도 저장 응답만으로 버전 충돌을 알려야 한다.
+  await b.route('**/rpc/get_state', route => route.abort());
   await b.click('#save-draft');
   await expect(b.locator('#rec-alert')).toContainText('다른 곳에서 이 공고를 먼저 저장했어요');
   await expect(b.locator('#f-topic')).toHaveValue('B창에서 입력한 주제');
+  await b.unroute('**/rpc/get_state');
 
   // 최신 내용 불러오기: 입력을 버린다는 확인 뒤 서버 값으로 다시 그린다
   await b.locator('#rec-alert button').click();
@@ -75,4 +77,16 @@ test('TC-05-05 기간 연장 칸은 현재 마감일 다음 날부터 고를 수
   await loginAs(page, '연구실 관리자');
   await open(page, '#/admin/recruitments?rec=R1');
   await expect(page.locator('#f-end')).toHaveAttribute('min', '2026-12-01');
+});
+
+test('TC-05-09 서버가 첫 지원 고정·게시 상태 불일치·마감 거절을 구분한다', async () => {
+  const admin = await clientAs(DEMO.admin);
+  const { data: state } = await admin.rpc('get_state').throwOnError();
+  const save = async (id, action) => (await admin.rpc('save_recruitment', {
+    p_id: id, p_saved_at: state.recs[id].savedAt, p_action: action, p_data: {}, p_detail: '',
+  }).throwOnError()).data;
+  expect(await save('R1', 'edit')).toMatchObject({ ok: false, code: 'conflict', reason: 'locked' });
+  expect(await save('R6', 'close')).toMatchObject({ ok: false, code: 'conflict', reason: 'state' });
+  expect((await save('R1', 'close')).ok).toBe(true);
+  expect(await save('R1', 'extend')).toMatchObject({ ok: false, code: 'conflict', reason: 'closed' });
 });

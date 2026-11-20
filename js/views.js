@@ -1090,15 +1090,21 @@ function viewRecruit(view, q, u) {
     if (guard && !(await confirmDialog({ title: '최신 내용을 불러올까요?', body: '<p>지금 입력한 내용은 저장되지 않고 서버에 저장된 최신 내용으로 바뀌어요.</p>', ok: '최신 내용 불러오기', cancel: '계속 작성' }))) return;
     guard = null; render();
   };
-  // 거절된 뒤 서버의 최신 공고와 비교해 이유를 알려 준다. 저장된 값은 덮어쓰지 않았고 입력은 그대로 둔다 (FR-05-09, 4.9)
-  const explainRejected = async () => {
-    try { await syncState(); } catch { /* 연결이 안 되면 마지막으로 받은 내용으로 판단한다 */ }
-    const fresh = isNew ? null : S.recs[sel];
+  const explainRejected = async ({ reason, savedAt } = {}) => {
+    // 이전 서버 또는 응답 유실 뒤의 결과 확인은 최신 공고를 다시 조회한다.
+    if (!reason) {
+      try { await syncState(); } catch { /* 마지막으로 받은 공고로 안내한다 */ }
+      const fresh = isNew ? null : S.recs[sel];
+      if (!isNew && !fresh) reason = 'unavailable';
+      else if (fresh && recStatus(fresh) === '마감' && !closed) reason = 'closed';
+      else if (fresh && !locked && appsOf(sel).length > 0) reason = 'locked';
+      else if (fresh && fresh.savedAt !== r.savedAt) { reason = 'version'; savedAt = fresh.savedAt; }
+    }
     let why = '공고 상태가 바뀌어 저장하지 못했어요.';
-    if (!isNew && !fresh) why = '이 공고를 더 이상 관리할 수 없어요.';
-    else if (fresh && recStatus(fresh) === '마감' && !closed) why = '그사이 모집이 마감됐어요. 마감된 공고는 바꿀 수 없어요.';
-    else if (fresh && !locked && appsOf(sel).length > 0) why = '그사이 첫 지원이 들어와 공고 항목이 고정됐어요. 이제 기간 연장과 조기 마감만 할 수 있어요.';
-    else if (fresh && fresh.savedAt !== r.savedAt) why = `다른 곳에서 이 공고를 먼저 저장했어요(마지막 저장 ${fmtDateTime(fresh.savedAt)}).`;
+    if (reason === 'unavailable') why = '이 공고를 더 이상 관리할 수 없어요.';
+    if (reason === 'closed') why = '그사이 모집이 마감됐어요. 마감된 공고는 바꿀 수 없어요.';
+    if (reason === 'locked') why = '그사이 첫 지원이 들어와 공고 항목이 고정됐어요. 이제 기간 연장과 조기 마감만 할 수 있어요.';
+    if (reason === 'version') why = `다른 곳에서 이 공고를 먼저 저장했어요(마지막 저장 ${fmtDateTime(savedAt)}).`;
     showCallout(alertBox, '저장하지 않았어요', `${why} 서버에 저장된 내용은 바뀌지 않았어요. 최신 내용을 확인한 뒤 다시 시도하세요.`, '최신 내용 불러오기', reloadLatest);
   };
   // 응답을 받지 못하면 성공·실패를 단정하지 않고 서버에서 결과를 다시 확인한다. 같은 변경을 새로 보내지 않는다 (4.9, FR-X-06)
@@ -1131,7 +1137,7 @@ function viewRecruit(view, q, u) {
     if (res.errors) { showErrors(res.errors); return; }
     if (res.code === 'network') { await checkResult(idOrNull, action, data, before, msg); return; }
     if (res.code === 'login') { guard = null; render(); toast('로그인 상태나 권한이 바뀌어 저장하지 못했어요. 다시 로그인해주세요.', true); return; }
-    await explainRejected();
+    await explainRejected(res);
   };
 
   on('#save-draft', (e) => {

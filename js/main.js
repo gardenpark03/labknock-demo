@@ -181,7 +181,20 @@ async function render() {
   const startedAt = Date.now();
   const root = document.documentElement;
   root.setAttribute('data-rendering', '');
-  try { await syncState(); } catch {
+  // 서버 응답을 기다리는 동안 빈 화면이나 이전 화면만 남지 않게 '불러오는 중'을 보여 준다 (3.1.9·NFR-10 처리 중 구분).
+  // 첫 진입은 바로, 이미 받은 뒤의 화면 이동은 0.4초 넘게 걸릴 때만 보여 깜박임을 줄인다.
+  // 같은 화면을 다시 그릴 때(심사 처리 뒤 등)는 지금 내용을 그대로 두어 스크롤 위치가 바뀌지 않게 한다
+  const samePath = parseHash().parts.join('/') === prevView.path;
+  const view = $('#view');
+  const showLoading = () => {
+    if (t !== renderSeq) return;
+    view.innerHTML = panelMsg('불러오고 있어요.', '잠시만 기다려 주세요.');
+    view.setAttribute('aria-busy', 'true');
+  };
+  const slow = !loaded ? (showLoading(), null) : samePath ? null : setTimeout(showLoading, 400);
+  const doneLoading = () => { clearTimeout(slow); if (t === renderSeq) view.removeAttribute('aria-busy'); };
+  try { await syncState(); doneLoading(); } catch {
+    doneLoading();
     if (t !== renderSeq) return;
     root.removeAttribute('data-rendering');
     if (!loaded) {

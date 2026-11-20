@@ -94,7 +94,8 @@ const DEMO = { student: 'student-a@g.skku.edu', admin: 'admin-a@skku.edu', appli
 /** 화면을 거치지 않고 서버 함수(RPC)를 직접 부를 수 있게, 이 계정으로 로그인한 Supabase 클라이언트를 만든다. */
 async function clientAs(email, password = 'labknock-demo-2026') {
   const { createClient } = require('@supabase/supabase-js');
-  const c = createClient(API, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  // 시험은 실시간 기능을 쓰지 않는다. Node 20(CI)에는 내장 WebSocket이 없어 클라이언트 생성이 실패하므로 빈 transport를 넘긴다
+  const c = createClient(API, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false }, realtime: { transport: class {} } });
   const { error } = await c.auth.signInWithPassword({ email, password });
   if (error) throw new Error(`${email} 로그인 실패: ${error.message}`);
   return c;

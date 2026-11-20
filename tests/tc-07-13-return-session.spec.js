@@ -1,7 +1,7 @@
 // TC-07-13 (FR-07-13, 3.1.8): 로그인 뒤에는 허용된 내부 목적지로만 돌아가고, 외부 주소·부적격 경로는 탐색으로 대체한다.
 // 마지막 활동부터 30분이 되면 다시 로그인해야 하고, 로그아웃한 세션은 다시 쓸 수 없다.
 const { test, expect } = require('@playwright/test');
-const { open, settle, loginAs, logout, resetDemo, API, PUBLISHABLE_KEY } = require('./helpers');
+const { open, settle, loginAs, logout, resetDemo, clientAs, createUser, API, PUBLISHABLE_KEY } = require('./helpers');
 
 test.beforeEach(async () => { await resetDemo(); });
 
@@ -61,4 +61,15 @@ test('TC-07-13 로그아웃한 세션의 토큰으로는 보호 데이터를 받
   expect(up.ok).toBeFalsy();
   const save = await fetch(`${API}/rest/v1/rpc/save_profile`, { method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_name: '로그아웃 뒤', p_grade: 1, p_declaration: true }) });
   expect((await save.json()).ok).toBe(false);
+});
+
+test('TC-07-13 로그아웃한 세션의 토큰으로는 연구실 인증을 신청할 수 없다', async () => {
+  const u = await createUser(`logout-vreq-${Date.now()}@skku.edu`, { role: 'admin' });
+  const c = await clientAs(u.email, u.password);
+  expect((await c.rpc('save_profile', { p_name: '로그아웃 신청', p_grade: null, p_declaration: true })).data.ok).toBe(true);
+  expect((await c.storage.from('files').upload(`${u.id}/k1/proof.pdf`, Buffer.from('%PDF-1.4 test'), { contentType: 'application/pdf' })).error).toBeNull();
+  const token = (await c.auth.getSession()).data.session.access_token;
+  await c.auth.signOut();
+  const r = await fetch(`${API}/rest/v1/rpc/request_verification`, { method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_confirmed_name: '로그아웃 신청', p_lab_id: 'L1', p_description: '로그아웃 뒤 신청', p_proof: 'proof.pdf', p_file_key: 'k1' }) });
+  expect((await r.json()).ok).toBe(false);
 });

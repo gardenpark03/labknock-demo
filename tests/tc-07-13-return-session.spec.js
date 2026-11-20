@@ -36,13 +36,13 @@ async function setIdle(page, minutes) {
 
 test('TC-07-13 마지막 활동 29분 뒤에는 그대로, 30분이 되면 다시 로그인해야 한다', async ({ page }) => {
   await loginAs(page, '학생');
-  await setIdle(page, 29);
   await open(page, '#/my');
+  // 보호 화면에서 한 번만 새로고침한다. 만료 처리 중 재진입하면 일회성 안내가 사라진다.
+  await setIdle(page, 29);
   await expect(page).toHaveURL(/#\/my/);
   await expect(page.locator('#account-btn')).toBeVisible();
 
   await setIdle(page, 30);
-  await open(page, '#/my');
   await expect(page).toHaveURL(/#\/login/);
   await expect(page.locator('#view')).toContainText('30분 동안 활동이 없어 로그아웃됐어요');
   await expect(page.locator('#account-btn')).toHaveCount(0);

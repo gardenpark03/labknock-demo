@@ -49,13 +49,16 @@ test('TC-07-13 마지막 활동 29분 뒤에는 그대로, 30분이 되면 다�
 });
 
 test('TC-07-13 로그아웃한 세션의 토큰으로는 보호 데이터를 받을 수 없다', async ({ page }) => {
-  // 알려진 SRS 차이 (Issue #4): 로그아웃이 이 브라우저에서만 이뤄져(signOut scope local) 토큰이 만료(1시간)까지 통한다.
-  // 서버에서 고치면 이 줄을 지운다.
-  test.fail();
   await loginAs(page, '학생');
   const token = await page.evaluate(() => JSON.parse(localStorage.getItem('labknock-auth')).access_token);
   await logout(page);
   const r = await fetch(`${API}/rest/v1/rpc/get_state`, { method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' });
   const body = r.ok ? await r.json() : { me: null };
   expect(body.me).toBeNull();
+  // 같은 토큰으로 본인 폴더에 파일을 올리거나 저장 함수를 부를 수도 없다
+  const me = '00000000-0000-4000-8000-000000000001';
+  const up = await fetch(`${API}/storage/v1/object/files/${me}/after-logout-${Date.now()}/cv.pdf`, { method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/pdf' }, body: '%PDF-1.4' });
+  expect(up.ok).toBeFalsy();
+  const save = await fetch(`${API}/rest/v1/rpc/save_profile`, { method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_name: '로그아웃 뒤', p_grade: 1, p_declaration: true }) });
+  expect((await save.json()).ok).toBe(false);
 });

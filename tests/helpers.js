@@ -87,4 +87,35 @@ async function adminLink(email, password) {
   return body.action_link;
 }
 
-module.exports = { adminLink, open, settle, loginAs, logout, confirmDialog, resetDemo, latestConfirmLink, SAMPLE_PDF, API };
+// 브라우저에 공개되는 키 (js/config.js와 같은 로컬 값)
+const PUBLISHABLE_KEY = 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const DEMO = { student: 'student-a@g.skku.edu', admin: 'admin-a@skku.edu', applicant: 'admin-b@skku.edu', operator: 'ops@skku.edu' };
+
+/** 화면을 거치지 않고 서버 함수(RPC)를 직접 부를 수 있게, 이 계정으로 로그인한 Supabase 클라이언트를 만든다. */
+async function clientAs(email, password = 'labknock-demo-2026') {
+  const { createClient } = require('@supabase/supabase-js');
+  const c = createClient(API, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await c.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(`${email} 로그인 실패: ${error.message}`);
+  return c;
+}
+
+/** 관리 API로 새 계정을 만든다 (로컬 전용). 가입과 같은 트리거(handle_new_user)로 프로필이 생긴다. */
+async function createUser(email, { role = 'student', confirmed = true, password = 'labknock-test-pass' } = {}) {
+  const r = await fetch(`${API}/auth/v1/admin/users`, { method: 'POST', headers: { apikey: localSecret(), Authorization: `Bearer ${localSecret()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, email_confirm: confirmed, user_metadata: { role } }) });
+  const body = await r.json();
+  if (!body.id) throw new Error(`계정 만들기 실패: ${JSON.stringify(body)}`);
+  return { id: body.id, email, password };
+}
+
+/** 로그인 화면에서 이메일·비밀번호를 직접 입력해 로그인한다. */
+async function loginWith(page, email, password, hash = '#/login') {
+  await open(page, hash);
+  await page.fill('#li-email', email);
+  await page.fill('#li-password', password);
+  await page.click('#li-submit');
+  await expect(page.locator('#account-btn')).toBeVisible();
+  await settle(page);
+}
+
+module.exports = { adminLink, open, settle, loginAs, loginWith, logout, confirmDialog, resetDemo, latestConfirmLink, clientAs, createUser, DEMO, PUBLISHABLE_KEY, SAMPLE_PDF, API };

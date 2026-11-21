@@ -16,6 +16,26 @@ const nowIso = () => new Date().toISOString();
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 const fmtSize = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
 
+// ---------- 아이콘 ----------
+// 한 가지 선형 세트만 쓴다(디자인 기준: 24 격자, stroke 1.75, 둥근 끝). 뜻은 옆 글자가 전하므로 화면 낭독기에는 숨긴다
+const ICON_PATHS = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  'arrow-left': '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+  calendar: '<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  'file-text': '<path d="M14 2.5H6a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-11z"/><path d="M14 2.5v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  'check-circle': '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+  'alert-circle': '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.5h.01"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  shield: '<path d="M12 21.5s7.5-3.6 7.5-9.5V5.5L12 2.5l-7.5 3V12c0 5.9 7.5 9.5 7.5 9.5z"/><path d="m9 12 2 2 4-4"/>',
+  mail: '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m21.5 7-9.5 6-9.5-6"/>',
+};
+const icon = (name, size = 20, cls = '') => `<svg class="lk-icon${cls ? ` ${cls}` : ''}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICON_PATHS[name] || ''}</svg>`;
+
 // 6.1: 문자열은 NFC로 정규화한 뒤 화면상 한 문자(확장 자소 묶음) 단위로 센다
 const segmenter = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('ko', { granularity: 'grapheme' }) : null;
 const countUnits = (t) => (segmenter ? [...segmenter.segment(t)].length : [...t].length);
@@ -50,7 +70,7 @@ let toastAt = 0;
 function toast(msg, isError = false) {
   toastAt = Date.now();
   const el = $('#toast');
-  el.textContent = msg;
+  el.innerHTML = `${icon(isError ? 'alert-circle' : 'check-circle', 20, 'toast__icon')}<span>${esc(msg)}</span>`;
   el.classList.toggle('is-error', isError);
   el.hidden = true; void el.offsetWidth; el.hidden = false; // 연속 알림에도 등장 전환을 다시 재생
   // 화면 낭독기용 알림 영역은 항상 두고 문구만 바꾼다

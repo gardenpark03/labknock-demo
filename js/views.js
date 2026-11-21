@@ -5,12 +5,12 @@
 
 // ---------- 공통 조각 ----------
 const head = (title, desc = '') => `<div class="page-head"><h1 class="lk-title">${title}</h1>${desc ? `<p class="lk-description">${desc}</p>` : ''}</div>`;
-const panelMsg = (title, desc = '', actions = '') => `<div class="lk-panel lk-empty"><p class="lk-item-title">${title}</p>${desc ? `<p class="lk-description" style="margin-top:8px">${desc}</p>` : ''}${actions ? `<div class="empty-actions">${actions}</div>` : ''}</div>`;
+const panelMsg = (title, desc = '', actions = '', ic = '') => `<div class="lk-panel lk-empty">${ic ? `<span class="empty-icon">${icon(ic, 24)}</span>` : ''}<p class="lk-item-title">${title}</p>${desc ? `<p class="lk-description" style="margin-top:8px">${desc}</p>` : ''}${actions ? `<div class="empty-actions">${actions}</div>` : ''}</div>`;
 function notAllowed(view, u) {
-  view.innerHTML = panelMsg('이 계정으로는 볼 수 없는 화면이에요.', u ? `${roleLabel(u)} 계정은 이 화면을 쓸 수 없어요.` : '', `<a class="lk-button lk-button--secondary" href="${homeOf(u)}">첫 화면으로</a>`);
+  view.innerHTML = panelMsg('이 계정으로는 볼 수 없는 화면이에요.', u ? `${roleLabel(u)} 계정은 이 화면을 쓸 수 없어요.` : '', `<a class="lk-button lk-button--secondary" href="${homeOf(u)}">첫 화면으로</a>`, 'lock');
 }
 function viewNotFound(view, u) {
-  view.innerHTML = panelMsg('페이지를 찾을 수 없어요.', '주소가 바뀌었거나 없는 페이지예요.', `<a class="lk-button lk-button--secondary" href="${homeOf(u)}">첫 화면으로</a>`);
+  view.innerHTML = panelMsg('페이지를 찾을 수 없어요.', '주소가 바뀌었거나 없는 페이지예요.', `<a class="lk-button lk-button--secondary" href="${homeOf(u)}">첫 화면으로</a>`, 'compass');
 }
 function on(sel, fn) { const el = $(sel); if (el) el.addEventListener('click', fn); }
 
@@ -78,7 +78,7 @@ function stepper(a) {
 function fileField(key, label, required, { bare = false, help = '' } = {}) {
   return `<div class="lk-field">${bare ? '' : `<span class="lk-label" id="${key}-label">${label}${required ? '<span class="req">필수</span>' : '<span class="opt">선택</span>'}</span>`}
     <div class="file-box" id="${key}-box" tabindex="-1" role="group" ${bare ? `aria-label="${label}"` : `aria-labelledby="${key}-label"`} aria-describedby="${help ? `${key}-help ` : ''}${key}-err">
-      <span class="file-box__name empty">선택한 파일 없음</span>
+      <span class="file-box__icon">${icon('file-text')}</span><span class="file-box__name empty">선택한 파일 없음</span>
       <button type="button" class="lk-button lk-button--secondary small-btn pick-btn">파일 선택</button>
       <button type="button" class="lk-button lk-button--secondary small-btn clear-btn" hidden>선택 취소</button>
     </div>
@@ -183,7 +183,7 @@ function viewHome(view, q, u) {
         <form class="home-search" id="home-search" role="search" novalidate>
           <label class="lk-label" for="home-q">연구실 이름 또는 연구 분야로 찾기</label>
           <div class="home-search__row">
-            <input class="lk-input" id="home-q" placeholder="예: 인공지능" autocomplete="off" aria-describedby="home-q-err">
+            <span class="input-icon">${icon('search', 20)}<input class="lk-input" id="home-q" placeholder="예: 인공지능" autocomplete="off" aria-describedby="home-q-err"></span>
             <button class="lk-button" type="submit">검색</button>
           </div>
           <p class="lk-error" id="home-q-err" hidden></p>
@@ -202,7 +202,7 @@ function viewHome(view, q, u) {
             <span class="soon__due lk-tabular"><span class="dday">${dday(r)}</span>${fmtDate(r.end)}까지</span>
           </a></li>`).join('')}</ol>` : '<p class="lk-description">지금 모집 중인 공고가 없어요.</p>'}
         <div class="soon__status" role="group" aria-label="모집 상태별 공고">${['모집 중', '모집 예정', '마감'].map(statusLink).join('')}</div>
-        <a class="detail-link" href="#/labs">모집 공고 전체 보기 ›</a>
+        <a class="detail-link" href="#/labs">모집 공고 전체 보기${icon('chevron-right', 16)}</a>
       </aside>
     </div>
     <section class="home-section" id="home-how" aria-labelledby="how-title">
@@ -301,7 +301,7 @@ function viewLabs(view, q) {
     <form class="search" id="search" role="search" novalidate>
       <label class="lk-label" for="q" style="grid-column:1/-1">연구실 이름 또는 연구 분야</label>
       <div class="search__input lk-field">
-        <input class="lk-input" id="q" name="q" value="${esc(qText)}" placeholder="예: 인공지능" aria-describedby="q-err" autocomplete="off">
+        <span class="input-icon">${icon('search', 20)}<input class="lk-input" id="q" name="q" value="${esc(qText)}" placeholder="예: 인공지능" aria-describedby="q-err" autocomplete="off"></span>
         <p class="lk-error" id="q-err" ${tooLong ? '' : 'hidden'}>${tooLong ? '검색어는 50자 이하로 입력해주세요.' : ''}</p>
       </div>
       <button class="lk-button" type="submit" id="search-btn">검색</button>
@@ -342,7 +342,7 @@ function viewLabs(view, q) {
   // 적용한 조건이 있으면 0건 결과처럼 필터 초기화도 함께 제공한다 (FR-01-06)
   if (!all.length) {
     const hasFilter = !!(qText || field || status);
-    $('#results').innerHTML = panelMsg('아직 게시된 모집 공고가 없어요.', '연구실이 모집 공고를 게시하면 이곳에 표시돼요.', hasFilter ? '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>' : '');
+    $('#results').innerHTML = panelMsg('아직 게시된 모집 공고가 없어요.', '연구실이 모집 공고를 게시하면 이곳에 표시돼요.', hasFilter ? '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>' : '', 'inbox');
     const er = $('#empty-reset'); if (er) er.addEventListener('click', () => go('#/labs'));
     return;
   }
@@ -357,12 +357,12 @@ function viewLabs(view, q) {
     <p class="result-count">모집 공고 ${rows.length}건<span class="lk-caption">모집 중 → 모집 예정 → 마감 순</span></p>
     <ul class="lk-lab-list">${rows.map((r) => { const lab = S.labs[r.lab]; const href = `#/lab/${r.lab}/${r.id}?back=${back}`; return `
       <li class="lk-lab-row lab-row">
-        <div class="lab-row__title"><div><h2 class="lk-item-title"><a class="lab-name-link" href="${href}">${esc(lab.name)}</a></h2><p>${esc(r.title)}</p></div>${badge(r.status)}</div>
-        <div class="lab-row__meta"><span><b>연구 분야</b>${esc(lab.fields.join(' · '))}</span><span><b>요구 역량</b>${esc(r.skills || '별도 요구 없음')}</span></div>
-        <div class="lab-row__foot"><span class="lab-row__meta lk-tabular"><span><b>모집기간</b>${period(r)}</span></span>
-          <a class="detail-link" href="${href}" aria-label="${esc(lab.name)} 상세 보기">상세 보기 ›</a></div>
+        <div class="lab-row__title"><div class="lab-row__name"><h2 class="lk-item-title"><a class="lab-name-link" href="${href}">${esc(lab.name)}</a></h2><p class="lab-row__rec">${esc(r.title)}</p></div>${badge(r.status)}</div>
+        <div class="lab-row__meta"><span class="tag-list"><b class="sr-only">연구 분야</b>${lab.fields.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}</span><span><b>요구 역량</b>${esc(r.skills || '별도 요구 없음')}</span></div>
+        <div class="lab-row__foot"><span class="lab-row__period lk-tabular">${icon('calendar', 18)}<b>모집기간</b>${period(r)}${r.status === '모집 중' ? `<span class="dday">${dday(r)}</span>` : ''}</span>
+          <a class="detail-link" href="${href}" aria-label="${esc(lab.name)} 상세 보기">상세 보기${icon('chevron-right', 16)}</a></div>
       </li>`; }).join('')}</ul>`
-    : panelMsg('조건에 맞는 모집 공고가 없어요.', '검색어나 필터를 바꾸거나 초기화해보세요.', '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>');
+    : panelMsg('조건에 맞는 모집 공고가 없어요.', '검색어나 필터를 바꾸거나 초기화해보세요.', '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>', 'search');
   const er = $('#empty-reset'); if (er) er.addEventListener('click', () => go('#/labs'));
 }
 
@@ -371,29 +371,30 @@ function viewDetail(view, labId, recId, q, u) {
   const r = S.recs[recId];
   if (!r || !r.published || r.lab !== labId) {
     // 초안·없는 공고·식별자 불일치를 같은 문구로 처리해 공고가 있는지 드러내지 않는다 (FR-02-01)
-    view.innerHTML = panelMsg('공고를 찾을 수 없어요.', '게시되지 않았거나 주소가 올바르지 않은 공고예요. 연구실 탐색에서 다시 찾아주세요.', '<a class="lk-button lk-button--secondary" href="#/labs">연구실 탐색</a>');
+    view.innerHTML = panelMsg('공고를 찾을 수 없어요.', '게시되지 않았거나 주소가 올바르지 않은 공고예요. 연구실 탐색에서 다시 찾아주세요.', '<a class="lk-button lk-button--secondary" href="#/labs">연구실 탐색</a>', 'compass');
     return;
   }
   const lab = S.labs[labId];
   const st = recStatus(r);
   const back = q.get('back') || ''; // 탐색 화면의 적용 조건을 그대로 돌려준다 (FR-01-07)
   view.innerHTML = `
-    <a class="back-link" href="#/labs${back ? '?' + esc(back) : ''}">← 연구실 탐색</a>
+    <a class="back-link" href="#/labs${back ? '?' + esc(back) : ''}">${icon('arrow-left', 18)}연구실 탐색</a>
     ${head(esc(lab.name), `${esc(r.title)} · ${esc(lab.dept)}`)}
     <div class="split">
       <article class="lk-panel">
         <section class="section"><h3>연구실 소개</h3><p>${esc(lab.intro)}</p>
-          <dl class="kv" style="margin-top:8px"><dt>담당 교수</dt><dd>${esc(lab.professor)}</dd><dt>연구 분야</dt><dd>${esc(lab.fields.join(' · '))}</dd></dl></section>
+          <dl class="kv" style="margin-top:12px"><dt>담당 교수</dt><dd>${esc(lab.professor)}</dd><dt>연구 분야</dt><dd class="tag-list">${lab.fields.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}</dd></dl></section>
         <section class="section"><h3>연구 주제</h3><p>${esc(r.topic)}</p></section>
         <section class="section"><h3>요구 역량</h3><p>${esc(r.skills || '별도 요구 없음')}</p></section>
         <section class="section"><h3>활동 방식</h3><p>${esc(r.activity)}</p></section>
       </article>
       <aside class="lk-panel apply-panel" aria-label="지원">
         ${badge(st)}
-        <div><p class="strong">모집기간</p><p class="lk-tabular">${period(r)}</p></div>
-        <p class="strong">모집 인원 ${esc(r.capacity)}명</p>
-        <hr class="divider" style="margin:0">
-        <div><p class="strong">제출 자료</p><p>CV 필수</p><p>성적증명서·포트폴리오 선택</p></div>
+        <dl class="facts">
+          <div class="facts__row"><dt>${icon('calendar', 18)}모집기간</dt><dd class="lk-tabular">${period(r)}</dd></div>
+          <div class="facts__row"><dt>${icon('users', 18)}모집 인원</dt><dd>${esc(r.capacity)}명</dd></div>
+          <div class="facts__row"><dt>${icon('file-text', 18)}제출 자료</dt><dd>CV 필수<br>성적증명서·포트폴리오 선택</dd></div>
+        </dl>
         <div id="apply-area"></div>
       </aside>
     </div>`;
@@ -453,6 +454,7 @@ function viewApply(view, recId, u) {
   let shown = { name: u.name, grade: u.grade };   // 화면에 보여 준 제출 당시 프로필
   view.innerHTML = `
     ${head('지원서 작성', `${esc(lab.name)} · ${esc(r.title)}`)}
+    <div class="lk-panel apply-card">
     <div class="profile-box"><span class="strong">내 프로필</span><div><p id="profile-line">${esc(u.name)} · ${esc(u.department)} · ${u.grade}학년</p><p class="lk-caption">${esc(u.email)} · 확인 완료 · 제출 당시 정보가 지원서에 함께 저장돼요</p></div></div>
     <div id="err-summary" class="error-summary" role="alert" hidden></div>
     <form id="apply" novalidate>
@@ -480,7 +482,8 @@ function viewApply(view, recId, u) {
         <a class="lk-button lk-button--secondary" href="#/lab/${r.lab}/${recId}">연구실 상세 보기</a>
         <button class="lk-button" type="submit" id="submit">지원서 제출</button>
       </div>
-    </form>`;
+    </form>
+    </div>`;
 
   const intro = $('#intro');
   // 작성 내용이나 파일이 있을 때만 이탈을 확인하고(FR-03-09), 오류를 고치면 요약의 항목 수를 다시 센다
@@ -596,8 +599,8 @@ function viewMy(view, q, u) {
     <div class="split split--list">
       <section class="lk-panel"><h2 class="lk-item-title" style="margin-bottom:12px">지원 목록</h2>
         ${mine.length ? `<ul class="pick-list">${mine.map(([k, a]) => { const r = S.recs[a.rec]; return `<li><a class="pick" href="#/my?app=${k}" aria-current="${k === sel}">
-          <span class="pick__title"><span>${esc(S.labs[r.lab].name)}</span></span><span>${esc(r.title)}</span>
-          <span class="lk-caption lk-tabular">제출 ${localDay(a.submittedAt)}</span><span>${badge(appStatus(a))}</span></a></li>`; }).join('')}</ul>
+          <span class="pick__title"><span>${esc(S.labs[r.lab].name)}</span>${badge(appStatus(a))}</span><span class="pick__sub">${esc(r.title)}</span>
+          <span class="lk-caption lk-tabular">제출 ${localDay(a.submittedAt)}</span></a></li>`; }).join('')}</ul>
           <p class="lk-caption" style="margin-top:12px">최신 제출순</p>` : '<p class="lk-description">아직 제출한 지원서가 없어요.</p><p style="margin-top:12px"><a class="lk-button lk-button--secondary" href="#/labs">연구실 탐색</a></p>'}
       </section>
       <section class="lk-panel" id="my-detail"></section>
@@ -671,7 +674,7 @@ function viewLogin(view, q) {
       <aside class="lk-panel auth__demo" aria-labelledby="demo-title">
         <h2 class="lk-item-title" id="demo-title">발표용 데모 계정</h2>
         <p class="lk-help">누르면 바로 로그인돼요. 직접 입력할 때 비밀번호는 <span class="code">${DEMO_PASSWORD}</span>이에요.</p>
-        <ul class="demo-list">${[...(S.demo || [])].sort((a, b) => DEMO_ORDER.indexOf(a.email) - DEMO_ORDER.indexOf(b.email)).map((du) => `<li><button type="button" class="demo-account" data-demo="${esc(du.email)}"><span class="demo-account__role">${roleLabel(du)}</span><span class="demo-account__desc">${esc(demoDesc(du))}</span><span class="lk-caption">${esc(du.email)}</span></button></li>`).join('')}</ul>
+        <ul class="demo-list">${[...(S.demo || [])].sort((a, b) => DEMO_ORDER.indexOf(a.email) - DEMO_ORDER.indexOf(b.email)).map((du) => `<li><button type="button" class="demo-account" data-demo="${esc(du.email)}"><span class="demo-account__avatar" aria-hidden="true">${esc(roleLabel(du).slice(0, 1))}</span><span class="demo-account__text"><span class="demo-account__role">${roleLabel(du)}</span><span class="demo-account__desc">${esc(demoDesc(du))}</span><span class="lk-caption">${esc(du.email)}</span></span></button></li>`).join('')}</ul>
       </aside>
     </div>`;
   const after = (u) => { go(next || fallback || homeOf(u), { replace: true }); toast(`${u.name || u.email}님, 로그인했어요.`); };
@@ -1017,9 +1020,9 @@ function viewRecruit(view, q, u) {
     <div class="split split--list">
       <section class="lk-panel"><div class="row" style="margin-bottom:12px"><h2 class="lk-item-title">공고 목록</h2><span class="spacer"></span><a class="lk-button lk-button--secondary small-btn" href="#/admin/recruitments?rec=new">새 공고</a></div>
         <ul class="pick-list">
-          ${isNew ? `<li><span class="pick" aria-current="true"><span class="pick__title"><span>새 공고</span></span><span>${badge('작성 중')}</span><span class="lk-caption">아직 저장하지 않았어요</span></span></li>` : ''}
+          ${isNew ? `<li><span class="pick" aria-current="true"><span class="pick__title"><span>새 공고</span>${badge('작성 중')}</span><span class="lk-caption">아직 저장하지 않았어요</span></span></li>` : ''}
           ${mine.map(([id, x]) => `<li><a class="pick" href="#/admin/recruitments?rec=${id}" aria-current="${id === sel}">
-            <span class="pick__title"><span>${esc(x.title)}</span></span><span>${badge(recStatus(x))}</span>
+            <span class="pick__title"><span>${esc(x.title)}</span>${badge(recStatus(x))}</span>
             <span class="lk-caption lk-tabular">기간 ${period(x)} · 지원 ${appsOf(id).length}건</span>
             <span class="lk-caption lk-tabular">마지막 저장 ${fmtDateTime(x.savedAt)}</span></a></li>`).join('')}
         </ul>

@@ -151,10 +151,12 @@ body.is-home .lk-main > .lk-container { width: 100%; max-width: none; }
 @media (hover: hover) and (pointer: fine) { .status-link:hover { border-color: var(--lk-text); } }
 
 .lab-dir { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 1.5rem; }
-.lab-dir a { display: grid; gap: 2px; padding: 14px 0; border-bottom: 1px solid var(--lk-border-soft); color: var(--lk-text); text-decoration: none; }
+.lab-dir li { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--lk-border-soft); }
+.lab-dir__main { flex: 1; min-width: 0; display: grid; gap: 2px; padding: 14px 0; color: var(--lk-text); text-decoration: none; }
+.lab-dir__ext { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; color: var(--lk-text-muted); transition: background-color .15s ease, color .15s ease; }
 .lab-dir__name { font-size: 0.9375rem; font-weight: 600; line-height: 1.4; }
 .lab-dir__sub { color: var(--lk-text-muted); font-size: 0.8125rem; }
-@media (hover: hover) and (pointer: fine) { .lab-dir a:hover .lab-dir__name { text-decoration: underline; text-underline-offset: 3px; } }
+@media (hover: hover) and (pointer: fine) { .lab-dir__main:hover .lab-dir__name { text-decoration: underline; text-underline-offset: 3px; } .lab-dir__ext:hover { background: var(--lk-surface-muted); color: var(--lk-text); } }
 
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; }
 .steps li { display: grid; align-content: start; gap: 8px; padding-top: 0; border-top: 0; }
@@ -208,6 +210,11 @@ body.is-home .lk-main > .lk-container { width: 100%; max-width: none; }
 .detail-hero .lk-title { font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.25; }
 .detail-hero .lk-description { font-size: 1.0625rem; color: var(--lk-text-secondary); }
 .detail-hero .tag-list { margin-top: 8px; }
+/* 연구실·교수 홈페이지 바깥 링크(DEC-27): 짙은 밑줄 글자 링크, 누르는 영역 44px */
+.ext-links { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 2px 0 -10px; }
+.ext-link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--lk-text); font-size: 0.9375rem; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.ext-link .lk-icon { color: var(--lk-text-muted); }
+@media (hover: hover) and (pointer: fine) { .ext-link:hover { text-decoration-thickness: 2px; } }
 .split { gap: 3rem; }
 .split > .lk-panel:not(.apply-panel) { padding: 0; border: 0; }
 .section h3 { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; }

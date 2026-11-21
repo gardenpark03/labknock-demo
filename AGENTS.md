@@ -8,10 +8,10 @@
 - 작업과 시험은 로컬 Supabase(`npx supabase@2.122.1 start`)로 한다. 배포 프로젝트에 직접 접속하거나 비밀 키·DB 비밀번호를 코드에 넣지 않는다.
 - 자동 시험은 `tests/tc-XX-YY-*.spec.js`에 SRS 확인 사례 ID별로 쓰고 `tests/helpers.js`를 재사용한다. 시험을 통과시키려고 기대값을 SRS와 다르게 바꾸지 않는다. 시험과 SRS가 어긋나면 사용자에게 알린다.
 - 공통 도구는 `js/core.js`, 서버 데이터·요청·상태 표시 규칙은 `js/data.js`, 주소별 화면 연결·머리글·바닥글은 `js/main.js`, 화면은 `js/views.js`, 서버 규칙은 `supabase/migrations/`에 있다.
-- 기존 토큰(`assets/tokens.css`)·컴포넌트(`assets/components.css`)·`app.css` 클래스를 재사용한다. 라이트 테마, Pretendard, 누르는 영역 44px 이상을 지킨다. 새 색·그림자·장식용 애니메이션을 만들지 않는다.
+- 화면 스타일은 공통 토큰(`assets/tokens.css`)·컴포넌트(`assets/components.css`)·`app.css` 위에 브랜드 레이어(`assets/brand.css`)를 얹는다. 색·그림자·그라데이션·움직임은 `brand.css`의 변수와 클래스(`lab-avatar`, `data-reveal`, `spot` 등)를 재사용하고 새로 흩뿌리지 않는다. 움직임은 `prefers-reduced-motion`에서 꺼지게 하고, Pretendard와 누르는 영역 44px 이상을 지킨다 (사용자 결정 DEC-24: 실제 서비스 수준의 디자인).
 - 화면 문구는 한국어 해요체로 쓰고, 버튼은 결과가 보이는 동작 문구로 쓴다.
 - 사용자 입력이나 저장된 값을 HTML에 넣을 때는 `esc()`로 감싼다.
-- DB 구조(테이블·열)를 바꿔야 하면 바꾸기 전에 사용자에게 알린다. 가상 데이터는 `seed_demo_data()`에 있다.
+- DB 구조(테이블·열)를 바꿔야 하면 바꾸기 전에 사용자에게 알린다. 시연 데이터는 `seed_demo_data()`에 있다(최신 정의는 `20261122000000_real_labs_demo_data.sql`). 연구실 이름·담당 교수·연구 분야는 소프트웨어융합대학 홈페이지 공개 자료를 참고한 실제 정보이고, 모집 공고·지원서·인증 요청·계정은 시연용 가상 데이터다.
 - 실제 개인정보·비밀번호·키를 넣지 않는다.
 - main에 직접 커밋하거나 push하지 않는다. 브랜치에서 작업하고 PR을 연다.
 - 끝나면 `npm test`와 CONTRIBUTING.md의 'PR 전 확인'을 수행하고, 바꾼 파일과 확인 결과를 요약한다.

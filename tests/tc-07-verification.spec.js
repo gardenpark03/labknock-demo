@@ -24,7 +24,7 @@ test('TC-07-08~11 새 관리자 신청자가 인증을 신청하고 승인받으
 
   await open(page, '#/verification');
   await page.selectOption('#vr-lab', 'L3');
-  await page.fill('#vr-desc', '소프트웨어공학 연구실 석사과정이며 공고 관리를 위임받았습니다.');
+  await page.fill('#vr-desc', 'Software Engineering 연구실 석사과정이며 공고 관리를 위임받았습니다.');
   await page.setInputFiles('#vr-proof-input', SAMPLE_PDF);
   await page.click('#vr-submit');
   await confirmDialog(page);
@@ -47,7 +47,7 @@ test('TC-07-08~11 새 관리자 신청자가 인증을 신청하고 승인받으
   await page.click('#li-submit');
   await settle(page);
   await open(page, '#/admin/recruitments');
-  await expect(page.locator('#view')).toContainText('소프트웨어공학 연구실');
+  await expect(page.locator('#view')).toContainText('Software Engineering 연구실');
 });
 
 test('다른 학생은 남의 첨부 파일 주소를 받을 수 없다 (Storage 권한)', async ({ page, request }) => {

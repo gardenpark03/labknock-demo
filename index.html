@@ -3,25 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="랩노크 · 연구실을 찾는 학부생과 학부연구생을 모집하는 연구실을 잇는 서비스 (수업 시연용, 가상 데이터)">
-  <meta name="theme-color" content="#FFFFFF">
+  <meta name="description" content="랩노크 · 성균관대학교 소프트웨어학과 학부연구생 모집과 지원을 한곳에서 (수업 시연용 서비스, 모집 공고는 예시)">
+  <meta name="theme-color" content="#070B1A">
   <meta name="color-scheme" content="light">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="랩노크">
   <meta property="og:title" content="랩노크 · 학부연구생 모집과 지원을 한 곳에서">
-  <meta property="og:description" content="연구실이 올린 학부연구생 모집 공고를 찾고, 지원서 제출부터 결과 확인까지 이어서 할 수 있어요. (수업 시연용, 가상 데이터)">
+  <meta property="og:description" content="소프트웨어학과 연구실의 학부연구생 모집 공고를 찾고, 지원서 제출부터 결과 확인까지 이어서 할 수 있어요. (수업 시연용, 모집 공고는 예시)">
   <title>랩노크</title>
   <link rel="preload" href="assets/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233D5BD9'/%3E%3Cpath d='M11 8v16h11' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366F1'/%3E%3Cstop offset='.55' stop-color='%238B5CF6'/%3E%3Cstop offset='1' stop-color='%23EC4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M8.5 24.5V12.8a4.6 4.6 0 0 1 9.2 0v11.7' fill='none' stroke='white' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='15' cy='18.8' r='1.3' fill='white'/%3E%3Cpath d='M21.2 13.8a4.4 4.4 0 0 1 0 6.6' fill='none' stroke='white' stroke-width='2.1' stroke-linecap='round'/%3E%3Cpath d='M24.2 11a8.2 8.2 0 0 1 0 12.2' fill='none' stroke='white' stroke-width='2.1' stroke-linecap='round' opacity='.6'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="assets/components.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="assets/brand.css">
 </head>
 <body class="lk-app">
   <a class="skip-link" href="#view" data-skip>본문으로 건너뛰기</a>
   <header class="lk-header">
     <div class="lk-container lk-header__inner">
-      <a class="lk-brand" href="#/" aria-label="LabKnock 홈"><span class="brand-mark" aria-hidden="true"></span>LabKnock</a>
+      <a class="lk-brand" href="#/" aria-label="LabKnock 홈"><svg class="brand-logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true" focusable="false"><defs><linearGradient id="lkg-h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366F1"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lkg-h)"/><path d="M8.5 24.5V12.8a4.6 4.6 0 0 1 9.2 0v11.7" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="18.8" r="1.3" fill="#fff"/><path d="M21.2 13.8a4.4 4.4 0 0 1 0 6.6" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M24.2 11a8.2 8.2 0 0 1 0 12.2" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" opacity=".6"/></svg><span class="brand-word">Lab<b>Knock</b></span></a>
       <nav class="lk-nav" id="nav" aria-label="주요 메뉴"></nav>
       <div class="account" id="account"></div>
     </div>
@@ -37,13 +38,13 @@
     <div class="lk-container">
       <div class="site-footer__top">
         <div class="site-footer__brand">
-          <a class="lk-brand" href="#/" aria-label="LabKnock 홈"><span class="brand-mark" aria-hidden="true"></span>LabKnock</a>
-          <p class="lk-description">연구실을 찾는 학부생과 학부연구생을 모집하는 연구실을 잇는 서비스</p>
+          <a class="lk-brand" href="#/" aria-label="LabKnock 홈"><svg class="brand-logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true" focusable="false"><defs><linearGradient id="lkg-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366F1"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#lkg-f)"/><path d="M8.5 24.5V12.8a4.6 4.6 0 0 1 9.2 0v11.7" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="18.8" r="1.3" fill="#fff"/><path d="M21.2 13.8a4.4 4.4 0 0 1 0 6.6" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M24.2 11a8.2 8.2 0 0 1 0 12.2" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" opacity=".6"/></svg><span class="brand-word">Lab<b>Knock</b></span></a>
+          <p class="lk-description">연구실의 문을 두드리는 가장 쉬운 방법. 성균관대학교 소프트웨어학과 학부연구생 모집과 지원을 한곳에서.</p>
         </div>
         <nav class="site-footer__nav" id="footer-nav" aria-label="바닥글 메뉴"></nav>
       </div>
       <div class="site-footer__bottom">
-        <p class="lk-caption">랩노크 · 소프트웨어공학개론 Team 10 프로젝트 시연용 서비스 · 모든 인물·연구실·공고는 가상이에요 · 가입하면 입력한 학교 이메일로 확인 메일이 실제로 가요</p>
+        <p class="lk-caption">© 2026 LabKnock · 소프트웨어공학개론 Team 10 시연용 서비스 · 연구실 이름·교수·연구 분야는 소프트웨어융합대학 홈페이지 공개 자료를 참고했고, 모집 공고·인물·계정은 시연용 예시예요 · 가입하면 입력한 학교 이메일로 확인 메일이 실제로 가요</p>
         <button type="button" class="lk-link demo-reset" id="reset" hidden>데모 데이터 초기화</button>
       </div>
     </div>

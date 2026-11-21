@@ -14,7 +14,7 @@ test('TC-04-04 · TC-X-06 철회 확인을 취소하면 요청과 이력이 생�
   });
   await page.click('#withdraw');
   const dialog = page.locator('#dialog');
-  await expect(dialog).toContainText('컴퓨팅시스템 연구실');
+  await expect(dialog).toContainText('컴퓨터시스템 연구실');
   await expect(dialog).toContainText('다시 지원할 수 없어요');
   await page.click('#dialog-cancel');
   await expect(dialog).toBeHidden();

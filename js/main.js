@@ -169,6 +169,9 @@ function closeAccountMenu(returnFocus = false) {
   if (returnFocus) $('#account-btn').focus();
 }
 document.addEventListener('click', (e) => { if (!e.target.closest('.account-menu')) closeAccountMenu(); });
+const syncHeader = () => { const h = $('.lk-header'); if (h) h.classList.toggle('is-scrolled', window.scrollY > 12); };
+window.addEventListener('scroll', syncHeader, { passive: true });
+syncHeader();
 
 // ---------- 화면 전환 ----------
 // 화면이 바뀌면 맨 위로 올리고 제목에 포커스, 목록 선택만 바뀌면 상세 제목으로, 같은 화면이면 포커스를 되살린다
@@ -208,7 +211,16 @@ async function render() {
   renderStartedAt = startedAt;
   try { paint(); } finally { root.removeAttribute('data-rendering'); }
 }
+// 화면을 그린 뒤 스크롤 등장·숫자 효과를 건다. 같은 화면을 다시 그리거나 백그라운드 갱신일 때는 효과 없이 바로 보여 준다
 function paint() {
+  const before = prevView.path;
+  paintView();
+  const view = $('#view');
+  const instant = bgRender || before === prevView.path;
+  view.classList.toggle('is-instant', instant);
+  enhanceView(view, instant);
+}
+function paintView() {
   const activeId = document.activeElement && document.activeElement.id;
   renderView();
   const { parts, q } = parseHash();
@@ -274,6 +286,8 @@ function renderView() {
   const view = $('#view');
   const page = parts[0] || 'home';
   const u = currentUser();
+  // 홈은 화면 전체를 쓰는 어두운 히어로 위에 투명한 머리글을 둔다
+  document.body.classList.toggle('is-home', page === 'home' && parts.length <= 1);
 
   // 로그인이 필요한 화면은 로그인 화면으로 보낸다. 로그인 뒤 허용된 목적지면 그곳으로,
   // 그 밖의 보호 화면이면 탐색으로 대체한다 (FR-07-13, 3.1.8). 판단은 로그인 화면이 한다

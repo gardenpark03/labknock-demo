@@ -45,6 +45,11 @@ const ICON_PATHS = {
   box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
   layers: '<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
   'bar-chart': '<path d="M3 3v18h18"/><path d="M7.5 16v-5M12.5 16V8M17.5 16v-8.5"/>',
+  'pie-chart': '<path d="M21 12c.55 0 1-.45.95-1A10 10 0 0 0 13 2.05c-.55-.05-1 .4-1 .95v8a1 1 0 0 0 1 1z"/><path d="M21.2 15.9A10 10 0 1 1 8 2.83"/>',
+  server: '<rect x="2.5" y="3" width="19" height="7.5" rx="2"/><rect x="2.5" y="13.5" width="19" height="7.5" rx="2"/><path d="M6.5 6.75h.01M6.5 17.25h.01"/>',
+  monitor: '<rect x="2.5" y="3.5" width="19" height="13" rx="2"/><path d="M8 21h8M12 16.5V21"/>',
+  braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+  'thumbs-up': '<path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z"/>',
   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
   cap: '<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/>',
@@ -54,9 +59,9 @@ const icon = (name, size = 20, cls = '') => `<svg class="lk-icon${cls ? ` ${cls}
 
 // 연구 분야마다 아이콘과 색(색상환 각도)을 정해 연구실 그림표로 쓴다
 const FIELD_STYLE = {
-  인공지능: ['network', 262], 자연어처리: ['message-square', 292], 컴퓨터비전: ['eye', 218], 추천시스템: ['layers', 276],
-  '데이터 분석': ['bar-chart', 190], 데이터베이스: ['database', 196], 분산컴퓨팅: ['layers', 206], 시스템: ['cpu', 232], 운영체제: ['cpu', 240],
-  소프트웨어공학: ['code', 28], 프로그래밍언어: ['code', 16], 보안: ['shield', 158], 네트워크: ['wifi', 200], HCI: ['pointer', 330], 정보시각화: ['bar-chart', 318], 그래픽스: ['box', 20],
+  인공지능: ['network', 262], 자연어처리: ['message-square', 292], 컴퓨터비전: ['eye', 218], 추천시스템: ['thumbs-up', 276],
+  '데이터 분석': ['bar-chart', 190], 데이터베이스: ['database', 196], 분산컴퓨팅: ['server', 206], 시스템: ['cpu', 232], 운영체제: ['monitor', 240],
+  소프트웨어공학: ['code', 28], 프로그래밍언어: ['braces', 16], 보안: ['shield', 158], 네트워크: ['wifi', 200], HCI: ['pointer', 330], 정보시각화: ['pie-chart', 318], 그래픽스: ['box', 20],
 };
 function labStyle(lab) {
   const f = ((lab && lab.fields) || []).find((x) => FIELD_STYLE[x]);

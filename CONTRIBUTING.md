@@ -44,7 +44,7 @@ SRS의 확인 사례(TC)를 브라우저 자동 시험(Playwright)으로 만듭�
 
 ## 서버(Supabase)
 
-- `supabase/migrations/`: 테이블, 권한, 업무 규칙 함수(RPC), 파일 저장소 권한, 가상 데이터. 모든 테이블은 RLS로 직접 접근을 막고, 화면은 `get_state()`와 저장 함수로만 읽고 씁니다.
+- `supabase/migrations/`: 테이블, 권한, 업무 규칙 함수(RPC), 파일 저장소 권한, 시연 데이터. 모든 테이블은 RLS로 직접 접근을 막고, 화면은 `get_state()`와 저장 함수로만 읽고 씁니다.
 - 규칙을 바꾸려면 기존 마이그레이션을 고치지 말고 새 마이그레이션 파일을 만듭니다(`npx supabase@2.122.1 migration new 이름`). 배포 서버 반영은 팀장이 합니다.
 - `supabase/config.toml`: 인증 설정(비밀번호 12자 이상, 이메일 확인 필수, 확인 링크 30분, 재발송 60초)과 확인 메일 양식(`supabase/templates/`)
 - 비밀 키(secret·service_role), DB 비밀번호, 메일 계정 비밀번호는 저장소에 절대 올리지 않습니다. `js/config.js`의 publishable key는 브라우저에 공개되는 키라 괜찮습니다.
@@ -56,6 +56,7 @@ SRS의 확인 사례(TC)를 브라우저 자동 시험(Playwright)으로 만듭�
 | `index.html` | 머리글·본문·바닥글·확인창의 틀 |
 | `app.css` | 화면별 스타일 |
 | `assets/tokens.css`, `assets/components.css` | 공통 색·간격·글자 토큰, 버튼·입력·배지 등 공통 컴포넌트 |
+| `assets/brand.css` | 브랜드 레이어: 로고 색, 홈 히어로·스크롤 등장 효과, 카드·버튼 새 단장, 어두운 바닥글 (가장 나중에 불러온다) |
 | `js/config.js` | 연결할 Supabase 주소와 공개 키(로컬·배포 자동 선택) |
 | `js/core.js` | 공통 도구: DOM 선택, 날짜·글자 수 계산, 아이콘(`icon('search')` 등 한 가지 선형 세트), 확인창, 알림, 첨부 파일 열기 |
 | `js/data.js` | 서버에서 받은 데이터(`S`)와 서버 요청(`api`), 공고·지원 상태 표시 규칙, 계정·세션·권한 |

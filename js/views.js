@@ -152,81 +152,211 @@ const HOME_FAQ = [
   ['제출한 지원서를 고치거나 취소할 수 있나요?', '제출한 내용은 고칠 수 없어요. 지원 완료·검토 중·면담 단계에서는 내 지원 현황에서 철회할 수 있어요. 철회는 되돌릴 수 없고, 철회한 공고에는 다시 지원할 수 없어요.'],
   ['결과는 어떻게 알 수 있나요?', '내 지원 현황에서 진행 단계와 상태 이력을 확인해요. 면담은 연구실이 필요할 때만 진행하고, 일정은 연구실이 따로 안내해요. 랩노크는 따로 알림을 보내지 않아요.'],
   ['모집 공고는 누가 올리나요?', '연구실 소속 인증을 승인받은 연구실 관리자만 자기 연구실의 공고를 올리고 지원자를 심사해요. 제출한 지원서는 본인과 해당 연구실 관리자만 볼 수 있어요.'],
-  ['실제로 운영하는 서비스인가요?', '소프트웨어공학개론 팀 프로젝트의 시연용 서비스예요. 모든 인물·연구실·공고는 가상이에요. 입력한 내용은 시연용 서버에 저장되고 데모 데이터를 초기화하면 지워지니, 실제 개인정보는 입력하지 마세요.'],
+  ['실제로 운영하는 서비스인가요?', '소프트웨어공학개론 팀 프로젝트의 시연용 서비스예요. 연구실 이름·담당 교수·연구 분야는 성균관대학교 소프트웨어융합대학 홈페이지의 공개 자료를 참고했지만, 모집 공고와 학생·관리자 계정은 모두 시연용 예시예요. 입력한 내용은 시연용 서버에 저장되고 데모 데이터를 초기화하면 지워지니, 실제 개인정보는 입력하지 마세요.'],
 ];
 const CHEVRON = '<svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function viewHome(view, q, u) {
   const recs = publicRecs();
-  const count = (s) => recs.filter((r) => r.status === s).length;
+  const count = (st) => recs.filter((r) => r.status === st).length;
+  const open = recs.filter((r) => r.status === '모집 중');
   // 마감이 가까운 순: 모집 중인 공고만, 마감일 → 연구실 이름 순
-  const soon = recs.filter((r) => r.status === '모집 중')
+  const soon = open.slice()
     .sort((a, b) => a.end.localeCompare(b.end) || S.labs[a.lab].name.localeCompare(S.labs[b.lab].name, 'ko') || a.id.localeCompare(b.id))
     .slice(0, 3);
+  const labs = Object.entries(S.labs).map(([id, l]) => ({ id, ...l })).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const fieldCount = new Set(labs.flatMap((l) => l.fields)).size;
+  const fields = recFields();
   const isStudent = !!u && u.role === 'student';
+  const btn = (href, label, cls = '') => `<a class="lk-button ${cls}" href="${href}">${label}</a>`;
   const howActions = !u
-    ? '<a class="lk-button" href="#/signup?role=student">학생으로 가입하기</a><a class="lk-button lk-button--secondary" href="#/labs">연구실 먼저 둘러보기</a>'
-    : isStudent ? '<a class="lk-button" href="#/labs">연구실 탐색</a><a class="lk-button lk-button--secondary" href="#/my">내 지원 현황</a>' : '';
-  const labAction = !u ? '<a class="lk-button" href="#/signup?role=admin">관리자 신청자로 가입하기</a>'
-    : isApprovedAdmin(u) ? '<a class="lk-button" href="#/admin/recruitments">모집 공고 관리</a>'
-    : isAdmin(u) ? '<a class="lk-button" href="#/verification">연구실 소속 인증</a>' : '';
-  const step = ([t, d], i) => `<li><span class="step-num" aria-hidden="true">${i + 1}</span><div class="step-text"><h3>${t}</h3><p>${d}</p></div></li>`;
-  const statusLink = (s) => `<a class="status-link" href="#/labs?${new URLSearchParams({ status: s })}">${s} <span class="lk-tabular">${count(s)}건</span></a>`;
+    ? btn('#/signup?role=student', `학생으로 가입하기${icon('arrow-right', 18)}`) + btn('#/labs', '연구실 먼저 둘러보기', 'lk-button--secondary')
+    : isStudent ? btn('#/labs', `연구실 탐색${icon('arrow-right', 18)}`) + btn('#/my', '내 지원 현황', 'lk-button--secondary') : '';
+  const labAction = !u ? btn('#/signup?role=admin', `관리자 신청자로 가입하기${icon('arrow-right', 18)}`, 'btn-light')
+    : isApprovedAdmin(u) ? btn('#/admin/recruitments', `모집 공고 관리${icon('arrow-right', 18)}`, 'btn-light')
+    : isAdmin(u) ? btn('#/verification', `연구실 소속 인증${icon('arrow-right', 18)}`, 'btn-light') : '';
+  const ctaActions = !u ? btn('#/signup?role=student', `학생으로 시작하기${icon('arrow-right', 18)}`, 'btn-light') + btn('#/labs', '모집 공고 둘러보기', 'btn-ghost')
+    : isStudent ? btn('#/labs', `모집 공고 둘러보기${icon('arrow-right', 18)}`, 'btn-light') + btn('#/my', '내 지원 현황', 'btn-ghost')
+    : u.role === 'operator' ? btn('#/ops/verifications', `인증 요청 검토${icon('arrow-right', 18)}`, 'btn-light')
+    : isApprovedAdmin(u) ? btn('#/admin/applicants', `지원자 관리${icon('arrow-right', 18)}`, 'btn-light') + btn('#/admin/recruitments', '모집 공고 관리', 'btn-ghost')
+    : btn('#/verification', `연구실 소속 인증${icon('arrow-right', 18)}`, 'btn-light');
+  const tags = (lab, n = 3) => `<span class="tag-list">${lab.fields.slice(0, n).map((f) => `<span class="tag">${esc(f)}</span>`).join('')}</span>`;
+  const statusLink = (st) => `<a class="status-link" href="#/labs?${new URLSearchParams({ status: st })}">${st} <span class="lk-tabular">${count(st)}건</span></a>`;
+  const top = soon[0];
+  const topLab = top ? S.labs[top.lab] : null;
+  const pill = (l) => `<span class="lab-pill">${labAvatar(l, 34)}<span class="lab-pill__text"><b>${esc(l.name)}</b><small>${esc(l.professor)} 교수</small></span></span>`;
+  const half = Math.ceil(labs.length / 2);
+  const rowA = labs.slice(0, half);
+  const rowB = labs.slice(half);
+  const marqueeRow = (list, rev) => `<div class="marquee${rev ? ' marquee--rev' : ''}"><div class="marquee__track"><div class="marquee__group">${list.map(pill).join('')}</div><div class="marquee__group" aria-hidden="true">${list.map(pill).join('')}</div></div></div>`;
+  const stepIcons = ['mail', 'search', 'file-text', 'check-circle'];
+  const postCard = (r, i) => { const lab = S.labs[r.lab]; return `
+    <a class="post-card spot" href="#/lab/${r.lab}/${r.id}?back=" data-reveal style="--d:${i * 90}ms">
+      <span class="post-card__head">${labAvatar(lab, 48)}<span class="post-card__lab"><b>${esc(lab.name)}</b><small>${esc(lab.professor)} 교수 · ${esc(lab.dept)}</small></span></span>
+      <span class="post-card__title">${esc(r.title)}</span>
+      ${tags(lab)}
+      <span class="post-card__foot lk-tabular">${icon('calendar', 16)}${fmtDate(r.end)}까지<span class="dday">${dday(r)}</span><span class="post-card__go">${icon('arrow-right', 18)}</span></span>
+    </a>`; };
 
   view.innerHTML = `
-    ${meStrip(u)}
-    <div class="home-hero">
-      <section class="home-intro" aria-labelledby="home-title">
-        <p class="eyebrow">소프트웨어학과 학부연구생 모집·지원</p>
-        <h1 class="lk-title" id="home-title">관심 있는 연구실을 찾고,<br>지원까지 한 곳에서</h1>
-        <p class="home-lead">연구실이 직접 올린 학부연구생 모집 공고를 한곳에서 보고, 지원서 제출부터 결과 확인까지 랩노크에서 이어서 할 수 있어요.</p>
-        <form class="home-search" id="home-search" role="search" novalidate>
-          <label class="lk-label" for="home-q">연구실 이름 또는 연구 분야로 찾기</label>
-          <div class="home-search__row">
-            <span class="input-icon">${icon('search', 20)}<input class="lk-input" id="home-q" placeholder="예: 인공지능" autocomplete="off" aria-describedby="home-q-err"></span>
-            <button class="lk-button" type="submit">검색</button>
+    <section class="hero" id="hero" aria-labelledby="home-title">
+      <div class="hero__bg" aria-hidden="true"><span class="blob blob--1"></span><span class="blob blob--2"></span><span class="blob blob--3"></span><span class="hero__grid"></span><span class="hero__beam"></span></div>
+      <div class="lk-container hero__inner">
+        <div class="hero__copy">
+          ${meStrip(u)}
+          <a class="hero__badge" href="#/labs?${new URLSearchParams({ status: '모집 중' })}" data-anim style="--d:0ms"><span class="pulse" aria-hidden="true"></span>지금 모집 중인 공고 <b class="lk-tabular">${open.length}건</b>${icon('arrow-right', 14)}</a>
+          <h1 class="hero__title" id="home-title" data-anim style="--d:90ms">연구실의 문을<br><span class="grad">지금 두드려 보세요</span></h1>
+          <p class="hero__lead" data-anim style="--d:180ms">성균관대학교 소프트웨어학과 연구실의 학부연구생 모집 공고를 한곳에서 찾고, 지원서 제출부터 결과 확인까지 랩노크에서 이어서 하세요.</p>
+          <form class="hero__search" id="home-search" role="search" novalidate data-anim style="--d:270ms">
+            <label class="sr-only" for="home-q">연구실 이름 또는 연구 분야로 찾기</label>
+            <span class="input-icon hero__field">${icon('search', 20)}<input class="lk-input" id="home-q" placeholder="연구실 이름이나 분야로 찾기 (예: 인공지능)" autocomplete="off" aria-describedby="home-q-err"></span>
+            <button class="lk-button hero__go" type="submit">공고 찾기</button>
+          </form>
+          <p class="lk-error hero__err" id="home-q-err" hidden></p>
+          <ul class="hero__chips" aria-label="연구 분야 바로 가기" data-anim style="--d:360ms">${fields.slice(0, 6).map((f) => `<li><a href="#/labs?${new URLSearchParams({ field: f })}">${fieldIcon(f)}${esc(f)}</a></li>`).join('')}</ul>
+          <dl class="hero__stats" data-reveal style="--d:300ms">
+            <div><dt>소프트웨어학과 연구실</dt><dd><span class="lk-tabular" data-count="${labs.length}">${labs.length}</span>곳</dd></div>
+            <div><dt>모집 중 공고</dt><dd><span class="lk-tabular" data-count="${open.length}">${open.length}</span>건</dd></div>
+            <div><dt>연구 분야</dt><dd><span class="lk-tabular" data-count="${fieldCount}">${fieldCount}</span>개</dd></div>
+          </dl>
+        </div>
+        <div class="hero__visual" aria-hidden="true">
+          ${top ? `<div class="float float--post" style="--depth:22px"><div class="float__inner">
+            <div class="fc-head">${labAvatar(topLab, 46)}<div class="fc-head__text"><p class="fc-lab">${esc(topLab.name)}</p><p class="fc-sub">${esc(topLab.professor)} 교수 · ${esc(topLab.dept)}</p></div>${badge('모집 중')}</div>
+            <p class="fc-title">${esc(top.title)}</p>
+            ${tags(topLab)}
+            <div class="fc-meta">${icon('calendar', 16)}<span class="lk-tabular">${period(top)}</span><span class="dday">${dday(top)}</span></div>
+            <div class="fc-meta">${icon('users', 16)}모집 인원 ${esc(top.capacity)}명 · CV 필수</div>
+            <span class="fc-btn">지원서 작성${icon('arrow-right', 16)}</span>
+          </div></div>` : ''}
+          <div class="float float--status" style="--depth:-30px"><div class="float__inner" style="--delay:-2.4s">
+            <p class="fc-kicker">${icon('bar-chart', 14)}내 지원 현황</p>
+            <p class="fc-strong">시스템 소프트웨어 학부연구생</p>
+            <div class="mini-steps"><span class="is-done">지원 완료</span><span class="is-current">검토 중</span><span>면담</span><span>최종 결과</span></div>
+          </div></div>
+          <div class="float float--result" style="--depth:40px"><div class="float__inner" style="--delay:-4.6s">
+            <div class="fc-row"><span class="fc-check">${icon('check', 18)}</span><div><p class="fc-strong">합격</p><p class="fc-sub">최종 결과가 반영됐어요</p></div></div>
+          </div></div>
+          <div class="float float--chip" style="--depth:-16px"><div class="float__inner" style="--delay:-1.2s">${icon('shield', 16)}인증된 연구실의 공고만</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="l-section l-section--labs" aria-labelledby="labs-title">
+      <div class="lk-container l-head" data-reveal>
+        <p class="l-eyebrow">소프트웨어학과 연구실</p>
+        <h2 class="l-title" id="labs-title"><span class="lk-tabular">${labs.length}</span>개 연구실의 문이 열려 있어요</h2>
+        <p class="l-desc">인공지능과 자연어처리부터 시스템·보안·HCI·그래픽스까지, 관심 분야의 연구실을 찾아보세요.</p>
+      </div>
+      <div class="marquee-wrap" data-reveal>${marqueeRow(rowA, false)}${marqueeRow(rowB, true)}</div>
+      <p class="lk-container l-note">연구실 이름·담당 교수·연구 분야는 성균관대학교 소프트웨어융합대학 홈페이지의 공개 자료를 참고했어요. 모집 공고와 계정은 시연용 예시예요.</p>
+    </section>
+
+    <section class="l-section" aria-labelledby="feat-title">
+      <div class="lk-container">
+        <div class="l-head" data-reveal>
+          <p class="l-eyebrow">왜 랩노크인가요</p>
+          <h2 class="l-title" id="feat-title">흩어진 모집 공고부터 결과 확인까지,<br>한 번의 흐름으로</h2>
+          <p class="l-desc">게시판과 단톡방을 오가며 공고를 찾고, 메일로 지원서를 보내고, 결과를 기다리던 과정을 하나로 이었어요.</p>
+        </div>
+        <div class="bento">
+          <article class="bento__card bento__card--wide spot" data-reveal style="--d:0ms">
+            <div class="bento__text"><span class="bento__icon">${icon('search')}</span><h3>조건으로 바로 찾는 모집 공고</h3><p>연구실 이름·연구 분야·모집 상태로 거르고, 마감이 가까운 공고부터 확인해요.</p></div>
+            <div class="bento__ui ui-search" aria-hidden="true">
+              <div class="ui-search__bar">${icon('search', 16)}<span>인공지능</span><b>공고 찾기</b></div>
+              <div class="ui-search__chips"><span class="is-on">모집 중</span><span>인공지능</span><span>자연어처리</span><span>시스템</span></div>
+              ${soon.map((r) => { const lab = S.labs[r.lab]; return `<div class="ui-row">${labAvatar(lab, 30)}<span class="ui-row__text"><b>${esc(lab.name)}</b><small>${esc(r.title)}</small></span><span class="dday">${dday(r)}</span></div>`; }).join('')}
+            </div>
+          </article>
+          <article class="bento__card spot" data-reveal style="--d:90ms">
+            <div class="bento__text"><span class="bento__icon">${icon('file-text')}</span><h3>지원서는 한 번에</h3><p>자기소개와 진학 희망 과정을 쓰고 CV를 PDF로 첨부해 바로 제출해요.</p></div>
+            <div class="bento__ui ui-form" aria-hidden="true"><span class="ui-line"></span><span class="ui-line ui-line--short"></span><span class="ui-file">${icon('file-text', 16)}CV.pdf<small>2.1 MB</small></span><span class="ui-submit">지원서 제출</span></div>
+          </article>
+          <article class="bento__card spot" data-reveal style="--d:0ms">
+            <div class="bento__text"><span class="bento__icon">${icon('bar-chart')}</span><h3>진행 단계가 한눈에</h3><p>지원 완료부터 검토·면담·최종 결과까지 상태 이력으로 남아요.</p></div>
+            <div class="bento__ui ui-progress" aria-hidden="true"><div class="ui-bar"><span></span></div><div class="ui-progress__labels"><span>지원 완료</span><span>검토 중</span><span>면담</span><span>결과</span></div></div>
+          </article>
+          <article class="bento__card spot" data-reveal style="--d:90ms">
+            <div class="bento__text"><span class="bento__icon">${icon('shield')}</span><h3>인증받은 연구실만</h3><p>소속 인증이 승인된 연구실 관리자만 공고를 올리고 지원자를 심사해요.</p></div>
+            <div class="bento__ui ui-verify" aria-hidden="true"><span class="ui-verify__seal">${icon('shield', 28)}</span><span class="ui-verify__row"><b>소속 인증</b>${badge('승인')}</span></div>
+          </article>
+          <article class="bento__card spot" data-reveal style="--d:180ms">
+            <div class="bento__text"><span class="bento__icon">${icon('users')}</span><h3>정원과 마감은 서버가 지켜요</h3><p>동시에 합격을 눌러도 정원을 넘지 않고, 첫 지원 뒤에는 공고 조건이 고정돼요.</p></div>
+            <div class="bento__ui ui-capacity" aria-hidden="true"><div class="ui-capacity__top"><span>합격 2명 / 모집 인원 2명</span><b>정원 마감</b></div><div class="ui-meter"><span></span></div></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="l-section l-section--tint" id="home-how" aria-labelledby="how-title">
+      <div class="lk-container">
+        <div class="l-head" data-reveal>
+          <p class="l-eyebrow">학생 이용 방법</p>
+          <h2 class="l-title" id="how-title">학생은 이렇게 지원해요</h2>
+          <p class="l-desc">가입부터 결과 확인까지 랩노크 안에서 이어져요.</p>
+        </div>
+        <ol class="flow">${HOW_STEPS.map(([t, d], i) => `<li class="flow__step spot" data-reveal style="--d:${i * 100}ms"><span class="flow__top"><span class="flow__icon">${icon(stepIcons[i], 22)}</span><span class="flow__num lk-tabular">0${i + 1}</span></span><h3>${t}</h3><p>${d}</p></li>`).join('')}</ol>
+        ${howActions ? `<div class="section-actions l-actions" data-reveal>${howActions}</div>` : ''}
+      </div>
+    </section>
+
+    <section class="l-section" aria-labelledby="soon-title">
+      <div class="lk-container">
+        <div class="l-head l-head--row" data-reveal>
+          <div><p class="l-eyebrow">마감 임박</p><h2 class="l-title" id="soon-title">마감이 가까운 공고</h2></div>
+          <a class="l-more" href="#/labs">모집 공고 전체 보기${icon('arrow-right', 18)}</a>
+        </div>
+        ${soon.length ? `<div class="post-grid">${soon.map(postCard).join('')}</div>` : '<p class="lk-description">지금 모집 중인 공고가 없어요.</p>'}
+        <div class="soon__status" role="group" aria-label="모집 상태별 공고" data-reveal>${['모집 중', '모집 예정', '마감'].map(statusLink).join('')}</div>
+      </div>
+    </section>
+
+    <section class="l-section" id="home-lab" aria-labelledby="lab-title">
+      <div class="lk-container">
+        <div class="lab-band" data-reveal>
+          <div class="lab-band__glow" aria-hidden="true"></div>
+          <div class="lab-band__copy">
+            <p class="l-eyebrow l-eyebrow--light">연구실 관리자</p>
+            <h2 class="l-title" id="lab-title">연구실 관리자라면</h2>
+            <p class="lab-band__lead">교수 또는 연구실을 대표하는 대학원생이 연구실 소속 인증을 받으면, 자기 연구실의 모집 공고를 올리고 지원자를 심사할 수 있어요. 인증이 승인되기 전에는 공고를 만들거나 지원자를 볼 수 없어요.</p>
+            <ol class="lab-band__steps">${LAB_STEPS.map(([t, d], i) => `<li><span class="lab-band__num lk-tabular">${i + 1}</span><div><h3>${t}</h3><p>${d}</p></div></li>`).join('')}</ol>
+            ${labAction ? `<div class="section-actions">${labAction}</div>` : ''}
           </div>
-          <p class="lk-error" id="home-q-err" hidden></p>
-        </form>
-        <div class="home-browse">
-          <p class="lk-label" id="home-fields">연구 분야</p>
-          <ul class="chip-list" aria-labelledby="home-fields">${recFields().map((f) => `<li><a class="chip" href="#/labs?${new URLSearchParams({ field: f })}">${esc(f)}</a></li>`).join('')}</ul>
+          <div class="lab-band__ui" aria-hidden="true">
+            <div class="mock">
+              <div class="mock__bar"><span></span><span></span><span></span><b>지원자 관리</b></div>
+              <div class="mock__cap"><span>합격 1명 / 모집 인원 2명</span><span class="mock__meter"><i></i></span></div>
+              <div class="mock__row"><b>가상 학생 E</b><small>접수 A-0097</small>${badge('합격')}</div>
+              <div class="mock__row is-on"><b>가상 학생 C</b><small>접수 A-0099</small>${badge('면담')}</div>
+              <div class="mock__row"><b>가상 학생 B</b><small>접수 A-0098</small>${badge('검토 중')}</div>
+              <div class="mock__row"><b>접수 A-0100</b><small>제출 2026.11.14</small>${badge('철회')}</div>
+              <div class="mock__actions"><span>합격</span><span>불합격</span><b>변경 내용 확인</b></div>
+            </div>
+          </div>
         </div>
-      </section>
-      <aside class="lk-panel soon" aria-labelledby="soon-title">
-        <h2 class="lk-item-title" id="soon-title">마감이 가까운 공고</h2>
-        ${soon.length ? `<ol class="soon__list">${soon.map((r) => `
-          <li><a class="soon__item" href="#/lab/${r.lab}/${r.id}?back=">
-            <span class="soon__lab">${esc(S.labs[r.lab].name)}</span>
-            <span class="soon__title">${esc(r.title)}</span>
-            <span class="soon__due lk-tabular"><span class="dday">${dday(r)}</span>${fmtDate(r.end)}까지</span>
-          </a></li>`).join('')}</ol>` : '<p class="lk-description">지금 모집 중인 공고가 없어요.</p>'}
-        <div class="soon__status" role="group" aria-label="모집 상태별 공고">${['모집 중', '모집 예정', '마감'].map(statusLink).join('')}</div>
-        <a class="detail-link" href="#/labs">모집 공고 전체 보기${icon('chevron-right', 16)}</a>
-      </aside>
-    </div>
-    <section class="home-section" id="home-how" aria-labelledby="how-title">
-      <div class="home-section__head">
-        <h2 class="lk-section-title" id="how-title">학생은 이렇게 지원해요</h2>
-        <p class="lk-description">가입부터 결과 확인까지 랩노크 안에서 이어져요.</p>
-      </div>
-      <ol class="steps">${HOW_STEPS.map(step).join('')}</ol>
-      ${howActions ? `<div class="section-actions">${howActions}</div>` : ''}
-    </section>
-    <section class="home-section" id="home-lab" aria-labelledby="lab-title">
-      <div class="lab-guide">
-        <div class="lab-guide__intro">
-          <h2 class="lk-section-title" id="lab-title">연구실 관리자라면</h2>
-          <p class="lk-description">교수 또는 연구실을 대표하는 대학원생이 연구실 소속 인증을 받으면, 자기 연구실의 모집 공고를 올리고 지원자를 심사할 수 있어요.</p>
-          <p class="lk-help">인증이 승인되기 전에는 공고를 만들거나 지원자를 볼 수 없어요.</p>
-          ${labAction ? `<div class="section-actions">${labAction}</div>` : ''}
-        </div>
-        <ol class="vsteps">${LAB_STEPS.map(step).join('')}</ol>
       </div>
     </section>
-    <section class="home-section" id="home-faq" aria-labelledby="faq-title">
-      <div class="home-section__head"><h2 class="lk-section-title" id="faq-title">자주 묻는 질문</h2></div>
-      <div class="lk-panel faq">${HOME_FAQ.map(([qq, a], i) => `<details id="faq-${i + 1}"><summary id="faq-${i + 1}-q"><span>${qq}</span>${CHEVRON}</summary><p class="faq__a">${a}</p></details>`).join('')}</div>
+
+    <section class="l-section" id="home-faq" aria-labelledby="faq-title">
+      <div class="lk-container faq-wrap">
+        <div class="faq-wrap__head" data-reveal>
+          <p class="l-eyebrow">FAQ</p>
+          <h2 class="l-title" id="faq-title">자주 묻는 질문</h2>
+          <p class="l-desc">랩노크 이용 방법과 지원 규칙을 모았어요.</p>
+        </div>
+        <div class="lk-panel faq" data-reveal>${HOME_FAQ.map(([qq, a], i) => `<details id="faq-${i + 1}"><summary id="faq-${i + 1}-q"><span>${qq}</span>${CHEVRON}</summary><p class="faq__a">${a}</p></details>`).join('')}</div>
+      </div>
+    </section>
+
+    <section class="l-section l-section--cta" aria-labelledby="cta-title">
+      <div class="lk-container">
+        <div class="cta-band" data-reveal>
+          <div class="cta-band__glow" aria-hidden="true"></div>
+          <h2 id="cta-title">지금, 연구실의 문을 두드려 보세요</h2>
+          <p>관심 있는 연구실의 공고를 찾고 지원까지 한 번에.</p>
+          <div class="cta-band__actions">${ctaActions}</div>
+        </div>
+      </div>
     </section>`;
 
   // 검색: 탐색 화면과 같은 50자 기준으로 검사하고, 통과하면 그 조건으로 탐색을 연다 (FR-01-08)
@@ -357,7 +487,7 @@ function viewLabs(view, q) {
     <p class="result-count">모집 공고 ${rows.length}건<span class="lk-caption">모집 중 → 모집 예정 → 마감 순</span></p>
     <ul class="lk-lab-list">${rows.map((r) => { const lab = S.labs[r.lab]; const href = `#/lab/${r.lab}/${r.id}?back=${back}`; return `
       <li class="lk-lab-row lab-row">
-        <div class="lab-row__title"><div class="lab-row__name"><h2 class="lk-item-title"><a class="lab-name-link" href="${href}">${esc(lab.name)}</a></h2><p class="lab-row__rec">${esc(r.title)}</p></div>${badge(r.status)}</div>
+        <div class="lab-row__title">${labAvatar(lab, 52)}<div class="lab-row__name"><h2 class="lk-item-title"><a class="lab-name-link" href="${href}">${esc(lab.name)}</a></h2><p class="lab-row__prof">${esc(lab.professor)} 교수 · ${esc(lab.dept)}</p><p class="lab-row__rec">${esc(r.title)}</p></div>${badge(r.status)}</div>
         <div class="lab-row__meta"><span class="tag-list"><b class="sr-only">연구 분야</b>${lab.fields.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}</span><span><b>요구 역량</b>${esc(r.skills || '별도 요구 없음')}</span></div>
         <div class="lab-row__foot"><span class="lab-row__period lk-tabular">${icon('calendar', 18)}<b>모집기간</b>${period(r)}${r.status === '모집 중' ? `<span class="dday">${dday(r)}</span>` : ''}</span>
           <a class="detail-link" href="${href}" aria-label="${esc(lab.name)} 상세 보기">상세 보기${icon('chevron-right', 16)}</a></div>
@@ -379,7 +509,15 @@ function viewDetail(view, labId, recId, q, u) {
   const back = q.get('back') || ''; // 탐색 화면의 적용 조건을 그대로 돌려준다 (FR-01-07)
   view.innerHTML = `
     <a class="back-link" href="#/labs${back ? '?' + esc(back) : ''}">${icon('arrow-left', 18)}연구실 탐색</a>
-    ${head(esc(lab.name), `${esc(r.title)} · ${esc(lab.dept)}`)}
+    <section class="detail-hero" style="--h:${labStyle(lab).h}">
+      ${labAvatar(lab, 68)}
+      <div class="detail-hero__text">
+        <p class="detail-hero__kicker">${esc(lab.dept)} · ${esc(lab.professor)} 교수</p>
+        <h1 class="lk-title">${esc(lab.name)}</h1>
+        <p class="lk-description">${esc(r.title)}</p>
+        <span class="tag-list">${lab.fields.map((f) => `<span class="tag">${fieldIcon(f)}${esc(f)}</span>`).join('')}</span>
+      </div>
+    </section>
     <div class="split">
       <article class="lk-panel">
         <section class="section"><h3>연구실 소개</h3><p>${esc(lab.intro)}</p>

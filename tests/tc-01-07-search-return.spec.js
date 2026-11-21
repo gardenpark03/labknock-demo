@@ -27,17 +27,17 @@ test('TC-01-07 뒤로 가기와 새로고침은 조건을 복원하고 메뉴·�
   await expectFilters(page, '지능형', '인공지능', '모집 중');
   await page.reload();
   await expectFilters(page, '지능형', '인공지능', '모집 중');
-  await expect(page.locator('#results .lab-name-link')).toHaveText('지능형시스템 연구실');
+  await expect(page.locator('#results .lab-name-link')).toHaveText('지능형 임베디드소프트웨어 연구실');
   await page.locator('#reset-filter').click();
   await expectFilters(page, '', '', '');
-  await expect(page.locator('#results')).toContainText('컴퓨팅시스템 연구실');
+  await expect(page.locator('#results')).toContainText('컴퓨터시스템 연구실');
 
   await filterLabs(page);
   await page.locator('#results .detail-link').click();
   await expect(page.locator('.back-link')).toBeVisible();
   await page.locator('#nav').getByRole('link', { name: '연구실 탐색' }).click();
   await expectFilters(page, '', '', '');
-  await expect(page.locator('#results')).toContainText('컴퓨팅시스템 연구실');
+  await expect(page.locator('#results')).toContainText('컴퓨터시스템 연구실');
 });
 
 test('TC-01-07 상세를 보는 사이 마감되면 복귀 후 같은 조건으로 최신 결과를 보여 준다', async ({ page }) => {
@@ -66,7 +66,7 @@ test('TC-01-07 새 탭은 적용된 조건만 복원하며 잘못된 조건 주�
   const tab = await context.newPage();
   await tab.goto(page.url());
   await expectFilters(tab, '지능형', '인공지능', '모집 중');
-  await expect(tab.locator('#results .lab-name-link')).toHaveText('지능형시스템 연구실');
+  await expect(tab.locator('#results .lab-name-link')).toHaveText('지능형 임베디드소프트웨어 연구실');
   await expect(tab.locator('#q-err')).toBeHidden();
 
   await open(tab, '#/labs?field=missing&status=missing');

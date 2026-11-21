@@ -5,7 +5,7 @@ const { open, loginAs, logout, confirmDialog, resetDemo, SAMPLE_PDF } = require(
 test.beforeEach(async () => { await resetDemo(); });
 
 test('학생 지원 → 관리자 심사·정원 초과 차단 → 학생 화면 합격 반영', async ({ page }) => {
-  // 장면 4~6: 학생이 지능형시스템 연구실(R1)에 지원서 제출
+  // 장면 4~6: 학생이 지능형 임베디드소프트웨어 연구실(R1)에 지원서 제출
   await loginAs(page, '학생');
   await open(page, '#/lab/L1/R1');
   await page.click('#to-apply');
@@ -18,7 +18,7 @@ test('학생 지원 → 관리자 심사·정원 초과 차단 → 학생 화면
   await expect(page.locator('#my-detail')).toContainText('접수번호 A-0103');
   await expect(page.locator('#my-detail')).toContainText('지원 완료');
 
-  // 장면 7: 컴퓨팅시스템(A0102, 검토 중) 철회
+  // 장면 7: 컴퓨터시스템(A0102, 검토 중) 철회
   await open(page, '#/my?app=A0102');
   await page.click('#withdraw');
   await confirmDialog(page);
@@ -103,6 +103,6 @@ test('운영 보조가 인증 요청을 승인하면 관리자 신청자가 공�
   await page.fill('#li-password', 'labknock-demo-2026');
   await page.click('#li-submit');
   await open(page, '#/admin/recruitments');
-  await expect(page.locator('#view')).toContainText('컴퓨팅시스템 연구실');
+  await expect(page.locator('#view')).toContainText('컴퓨터시스템 연구실');
   await expect(page.locator('#view')).toContainText('공고 목록');
 });

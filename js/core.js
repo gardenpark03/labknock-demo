@@ -33,6 +33,7 @@ const ICON_PATHS = {
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   shield: '<path d="M12 21.5s7.5-3.6 7.5-9.5V5.5L12 2.5l-7.5 3V12c0 5.9 7.5 9.5 7.5 9.5z"/><path d="m9 12 2 2 4-4"/>',
   mail: '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m21.5 7-9.5 6-9.5-6"/>',
+  network: '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
   sparkles: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/>',
   'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -53,7 +54,7 @@ const icon = (name, size = 20, cls = '') => `<svg class="lk-icon${cls ? ` ${cls}
 
 // 연구 분야마다 아이콘과 색(색상환 각도)을 정해 연구실 그림표로 쓴다
 const FIELD_STYLE = {
-  인공지능: ['sparkles', 262], 자연어처리: ['message-square', 292], 컴퓨터비전: ['eye', 218], 추천시스템: ['layers', 276],
+  인공지능: ['network', 262], 자연어처리: ['message-square', 292], 컴퓨터비전: ['eye', 218], 추천시스템: ['layers', 276],
   '데이터 분석': ['bar-chart', 190], 데이터베이스: ['database', 196], 분산컴퓨팅: ['layers', 206], 시스템: ['cpu', 232], 운영체제: ['cpu', 240],
   소프트웨어공학: ['code', 28], 프로그래밍언어: ['code', 16], 보안: ['shield', 158], 네트워크: ['wifi', 200], HCI: ['pointer', 330], 정보시각화: ['bar-chart', 318], 그래픽스: ['box', 20],
 };

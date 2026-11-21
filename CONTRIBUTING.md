@@ -56,7 +56,7 @@ SRS의 확인 사례(TC)를 브라우저 자동 시험(Playwright)으로 만듭�
 | `index.html` | 머리글·본문·바닥글·확인창의 틀 |
 | `app.css` | 화면별 스타일 |
 | `assets/tokens.css`, `assets/components.css` | 공통 색·간격·글자 토큰, 버튼·입력·배지 등 공통 컴포넌트 |
-| `assets/brand.css` | 브랜드 레이어: 로고 색, 홈 히어로·스크롤 등장 효과, 카드·버튼 새 단장, 어두운 바닥글 (가장 나중에 불러온다) |
+| `assets/brand.css` | 디자인 레이어: 색·선·그림자·모서리 변수와 홈·목록·상세 화면 모양. 규칙은 `DESIGN.md` (Airbnb DESIGN.md 기반, 강조색 랩노크 파랑 하나, 그라데이션·스크롤 효과 없음) |
 | `js/config.js` | 연결할 Supabase 주소와 공개 키(로컬·배포 자동 선택) |
 | `js/core.js` | 공통 도구: DOM 선택, 날짜·글자 수 계산, 아이콘(`icon('search')` 등 한 가지 선형 세트), 확인창, 알림, 첨부 파일 열기 |
 | `js/data.js` | 서버에서 받은 데이터(`S`)와 서버 요청(`api`), 공고·지원 상태 표시 규칙, 계정·세션·권한 |

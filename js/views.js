@@ -156,6 +156,13 @@ const HOME_FAQ = [
 ];
 const CHEVRON = '<svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+// 연구실·교수 홈페이지 바깥 링크(DEC-27). 새 창으로 열고, 이 사이트 주소를 넘기지 않는다
+function labLinks(labId) {
+  const l = LAB_LINKS[labId] || {};
+  return [l.lab && ['연구실 홈페이지', l.lab], l.prof && ['교수 홈페이지', l.prof]].filter(Boolean);
+}
+const extLinkAttrs = (href) => `href="${esc(href)}" target="_blank" rel="noopener noreferrer"`;
+
 function viewHome(view, q, u) {
   const recs = publicRecs();
   const count = (st) => recs.filter((r) => r.status === st).length;
@@ -220,10 +227,10 @@ function viewHome(view, q, u) {
       <div class="lk-container">
         <div class="sec-head">
           <div><h2 class="sec-title" id="labs-title">소프트웨어학과 연구실 <span class="lk-tabular">${labs.length}</span>곳</h2>
-            <p class="sec-desc">연구실을 누르면 그 연구실의 모집 공고를 찾아 드려요.</p></div>
+            <p class="sec-desc">연구실을 누르면 그 연구실의 모집 공고를 찾아 드려요. 오른쪽 화살표를 누르면 연구실 홈페이지가 새 창으로 열려요.</p></div>
         </div>
-        <ul class="lab-dir">${labs.map((l) => `<li><a href="#/labs?${new URLSearchParams({ q: l.name })}"><span class="lab-dir__name">${esc(l.name)}</span><span class="lab-dir__sub">${esc(l.professor)} 교수 · ${l.fields.slice(0, 2).map(esc).join(' · ')}</span></a></li>`).join('')}</ul>
-        <p class="sec-note">연구실 이름·담당 교수·연구 분야는 성균관대학교 소프트웨어융합대학 홈페이지의 공개 자료를 참고했어요. 모집 공고와 계정은 시연용 예시예요.</p>
+        <ul class="lab-dir">${labs.map((l) => { const site = (LAB_LINKS[l.id] || {}).lab; return `<li><a class="lab-dir__main" href="#/labs?${new URLSearchParams({ q: l.name })}"><span class="lab-dir__name">${esc(l.name)}</span><span class="lab-dir__sub">${esc(l.professor)} 교수 · ${l.fields.slice(0, 2).map(esc).join(' · ')}</span></a>${site ? `<a class="lab-dir__ext" ${extLinkAttrs(site)} title="연구실 홈페이지"><span class="sr-only">${esc(l.name)} 홈페이지(새 창)</span>${icon('arrow-up-right', 18)}</a>` : ''}</li>`; }).join('')}</ul>
+        <p class="sec-note">연구실 이름·담당 교수·연구 분야는 성균관대학교 소프트웨어융합대학 홈페이지의 공개 자료를, 홈페이지 링크는 소프트웨어학과 교수소개를 참고했어요. 모집 공고와 계정은 시연용 예시예요.</p>
       </div>
     </section>
 
@@ -411,6 +418,7 @@ function viewDetail(view, labId, recId, q, u) {
         <h1 class="lk-title">${esc(lab.name)}</h1>
         <p class="lk-description">${esc(r.title)}</p>
         <span class="tag-list">${lab.fields.map((f) => `<span class="tag">${fieldIcon(f)}${esc(f)}</span>`).join('')}</span>
+        ${labLinks(labId).length ? `<p class="ext-links">${labLinks(labId).map(([t, h]) => `<a class="ext-link" ${extLinkAttrs(h)}>${t}${icon('arrow-up-right', 16)}<span class="sr-only">(새 창)</span></a>`).join('')}</p>` : ''}
       </div>
     </section>
     <div class="split">

@@ -10,6 +10,23 @@ const SESSION_LIMIT_MS = 30 * 60 * 1000;   // FR-07-13 마지막 활동부터 30
 const RESEND_GAP_MS = 60 * 1000;           // FR-07-04 재발송 60초 간격
 const SCHOOL_DOMAINS = ['skku.edu', 'g.skku.edu'];
 const LOCAL_KEY = 'labknock-local-v2';     // 이 브라우저의 활동 시각·복귀 목적지·최근 확인 메일 발송 시각
+// 연구실·교수 홈페이지 링크(DEC-27): 소프트웨어학과 교수소개(cse.skku.edu/cse/faculty.do)의 공개 링크를 2026-11-22에 확인해 옮겼다.
+// 열리지 않는 주소(이은석 교수 연구실 selab.skku.ac.kr, 이종욱 교수 개인 홈페이지)는 넣지 않았다. 화면이 새 창으로 여는 고정 링크이고 서버에는 저장하지 않는다.
+const LAB_LINKS = {
+  L1: { lab: 'https://nyx.skku.ac.kr/lab/' },
+  L2: { lab: 'https://csl.skku.edu/' },
+  L4: { lab: 'https://softsec.skku.edu/' },
+  L5: { lab: 'https://idclab.skku.edu/' },
+  L6: { lab: 'http://dicl.skku.edu/' },
+  L7: { lab: 'https://nlplab.skku.edu/', prof: 'https://nlp.skku.edu/' },
+  L8: { lab: 'https://dial.skku.edu/home' },
+  L9: { lab: 'http://cg.skku.edu/', prof: 'http://cg.skku.edu/slee/' },
+  L10: { lab: 'https://iotlab.skku.edu/', prof: 'https://iotlab.skku.edu/people-jaehoon-jeong.php' },
+  L11: { lab: 'https://secai.skku.edu/', prof: 'https://kevinkoo001.github.io/' },
+  L12: { lab: 'https://learndatalab.github.io/', prof: 'https://www.hogunpark.com/' },
+  L13: { lab: 'https://sites.google.com/site/vclabskku/' },
+  L14: { lab: 'https://sal.skku.edu/' },
+};
 
 const SB = supabase.createClient(LK_CONFIG.url, LK_CONFIG.anonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'labknock-auth' },

@@ -162,6 +162,8 @@ function labLinks(labId) {
   return [l.lab && ['연구실 홈페이지', l.lab], l.prof && ['교수 홈페이지', l.prof]].filter(Boolean);
 }
 const extLinkAttrs = (href) => `href="${esc(href)}" target="_blank" rel="noopener noreferrer"`;
+// 마감 7일 이하(오늘 마감 포함)는 포인트 노랑으로 눈에 띄게 한다(DEC-34, 표시만 바뀜)
+const ddayTag = (r) => { const t = dday(r); const soon = t === '오늘 마감' || Number(t.slice(2)) <= 7; return `<span class="dday${soon ? ' dday--soon' : ''}">${t}</span>`; };
 
 function viewHome(view, q, u) {
   const recs = publicRecs();
@@ -184,7 +186,7 @@ function viewHome(view, q, u) {
   const statusLink = (st) => `<a class="status-link" href="#/labs?${new URLSearchParams({ status: st })}">${st}<span class="lk-tabular">${count(st)}</span></a>`;
   const postCard = (r) => { const lab = S.labs[r.lab]; return `
     <li><a class="post-card" href="#/lab/${r.lab}/${r.id}?back=">
-      <span class="post-card__top">${labAvatar(lab, 40)}<span class="dday">${dday(r)}</span></span>
+      <span class="post-card__top">${labAvatar(lab, 40)}${ddayTag(r)}</span>
       <span class="post-card__lab">${esc(lab.name)}</span>
       <span class="post-card__prof">${esc(lab.professor)} 교수 · ${lab.fields.slice(0, 2).map(esc).join(' · ')}</span>
       <span class="post-card__title">${esc(r.title)}</span>
@@ -196,7 +198,7 @@ function viewHome(view, q, u) {
       <div class="lk-container">
         ${meStrip(u)}
         <p class="home-kicker">성균관대학교 소프트웨어학과</p>
-        <h1 class="home-title" id="home-title">학부연구생 모집 공고를<br class="br-wide"> 한곳에서 찾고 지원하세요</h1>
+        <h1 class="home-title" id="home-title">학부연구생 모집 공고를<br class="br-wide"> <span class="ink-mark">한곳에서</span> 찾고 지원하세요</h1>
         <form class="search-pill" id="home-search" role="search" novalidate>
           <label class="search-pill__field" for="home-q">
             <span class="search-pill__label">연구실 · 연구 분야</span>
@@ -214,7 +216,7 @@ function viewHome(view, q, u) {
     <section class="home-sec" aria-labelledby="soon-title">
       <div class="lk-container">
         <div class="sec-head">
-          <div><h2 class="sec-title" id="soon-title">마감이 가까운 공고</h2>
+          <div><h2 class="sec-title" id="soon-title"><span class="ink-mark">마감</span>이 가까운 공고</h2>
             <p class="sec-desc">지금 모집 중인 공고 ${open.length}건을 마감일 순으로 보여 드려요.</p></div>
           <a class="sec-more" href="#/labs">전체 보기${icon('chevron-right', 16)}</a>
         </div>
@@ -226,7 +228,7 @@ function viewHome(view, q, u) {
     <section class="home-sec" aria-labelledby="labs-title">
       <div class="lk-container">
         <div class="sec-head">
-          <div><h2 class="sec-title" id="labs-title">소프트웨어학과 연구실 <span class="lk-tabular">${labs.length}</span>곳</h2>
+          <div><h2 class="sec-title" id="labs-title">소프트웨어학과 연구실 <span class="ink-mark"><span class="lk-tabular">${labs.length}</span>곳</span></h2>
             <p class="sec-desc">연구실을 누르면 그 연구실의 모집 공고를 찾아 드려요. 오른쪽 화살표를 누르면 연구실 홈페이지가 새 창으로 열려요.</p></div>
         </div>
         <ul class="lab-dir">${labs.map((l) => { const site = (LAB_LINKS[l.id] || {}).lab; return `<li><a class="lab-dir__main" href="#/labs?${new URLSearchParams({ q: l.name })}"><span class="lab-dir__name">${esc(l.name)}</span><span class="lab-dir__sub">${esc(l.professor)} 교수 · ${l.fields.slice(0, 2).map(esc).join(' · ')}</span></a>${site ? `<a class="lab-dir__ext" ${extLinkAttrs(site)} title="연구실 홈페이지"><span class="sr-only">${esc(l.name)} 홈페이지(새 창)</span>${icon('arrow-up-right', 18)}</a>` : ''}</li>`; }).join('')}</ul>
@@ -236,7 +238,7 @@ function viewHome(view, q, u) {
 
     <section class="home-sec home-sec--soft" id="home-how" aria-labelledby="how-title">
       <div class="lk-container">
-        <div class="sec-head"><div><h2 class="sec-title" id="how-title">학생은 이렇게 지원해요</h2>
+        <div class="sec-head"><div><h2 class="sec-title" id="how-title">학생은 <span class="ink-mark">이렇게</span> 지원해요</h2>
           <p class="sec-desc">가입부터 결과 확인까지 랩노크 안에서 이어져요.</p></div></div>
         <ol class="steps">${HOW_STEPS.map(([t, d], i) => `<li><span class="steps__num lk-tabular">${i + 1}</span><h3>${t}</h3><p>${d}</p></li>`).join('')}</ol>
         ${howActions ? `<div class="section-actions">${howActions}</div>` : ''}
@@ -391,7 +393,7 @@ function viewLabs(view, q) {
       <li class="lk-lab-row lab-row">
         <div class="lab-row__title">${labAvatar(lab, 52)}<div class="lab-row__name"><h2 class="lk-item-title"><a class="lab-name-link" href="${href}">${esc(lab.name)}</a></h2><p class="lab-row__prof">${esc(lab.professor)} 교수 · ${esc(lab.dept)}</p><p class="lab-row__rec">${esc(r.title)}</p></div>${badge(r.status)}</div>
         <div class="lab-row__meta"><span class="tag-list"><b class="sr-only">연구 분야</b>${lab.fields.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}</span><span><b>요구 역량</b>${esc(r.skills || '별도 요구 없음')}</span></div>
-        <div class="lab-row__foot"><span class="lab-row__period lk-tabular">${icon('calendar', 18)}<b>모집기간</b>${period(r)}${r.status === '모집 중' ? `<span class="dday">${dday(r)}</span>` : ''}</span>
+        <div class="lab-row__foot"><span class="lab-row__period lk-tabular">${icon('calendar', 18)}<b>모집기간</b>${period(r)}${r.status === '모집 중' ? `${ddayTag(r)}` : ''}</span>
           <a class="detail-link" href="${href}" aria-label="${esc(lab.name)} 상세 보기">상세 보기${icon('chevron-right', 16)}</a></div>
       </li>`; }).join('')}</ul>`
     : panelMsg('조건에 맞는 모집 공고가 없어요.', '검색어나 필터를 바꾸거나 초기화해보세요.', '<button class="lk-button lk-button--secondary" type="button" id="empty-reset">필터 초기화</button>', 'search');
@@ -447,7 +449,7 @@ function viewDetail(view, labId, recId, q, u) {
   const disabledBtn = (label) => `<button class="lk-button" disabled aria-describedby="apply-reason">${label}</button>`;
   // 조기 마감 시각은 UTC로 오므로 한국 날짜로 바꿔 표시한다
   const kstDate = (iso) => fmtDate(new Date(new Date(iso).getTime() + 9 * 36e5).toISOString());
-  const until = `<p class="lk-help deadline"><span class="dday">${dday(r)}</span>${fmtDate(r.end)}까지 지원할 수 있어요</p>`;
+  const until = `<p class="lk-help deadline">${ddayTag(r)}${fmtDate(r.end)}까지 지원할 수 있어요</p>`;
   if (mine) {
     const s = appStatus(mine);
     const key = Object.keys(S.apps).find((k) => S.apps[k] === mine);

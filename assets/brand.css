@@ -18,6 +18,9 @@
   --lk-accent: #3D5BD9;
   --lk-accent-hover: #2F49B8;
   --lk-accent-soft: #EEF1FC;
+  --lk-point: #FFC93D;              /* 포인트 노랑(DEC-34): 형광펜 밑줄·마감 임박·로고 물결·단계 번호·지금 메뉴 표시 */
+  --lk-point-soft: #FFF6D9;
+  --lk-point-ink: #3D2E00;          /* 포인트 바탕 위 글자(대비 8:1 이상) */
   --lk-focus: #222222;
   --lk-neutral: #6A6A6A;
   --lk-neutral-soft: #F2F2F2;
@@ -46,7 +49,7 @@
 
 html, body { overflow-x: clip; }
 body.lk-app { background: var(--lk-canvas); color: var(--lk-text); }
-::selection { background: rgb(61 91 217 / 18%); }
+::selection { background: rgb(255 201 61 / 45%); }
 .lk-app :where(button, input, select, textarea, a, summary):focus-visible { outline: 2px solid var(--lk-focus); outline-offset: 2px; }
 
 /* ---------- 버튼·입력·배지 ---------- */
@@ -70,6 +73,7 @@ textarea.lk-input { min-height: 8rem; }
 .lk-badge--success { background: var(--lk-success-soft); color: var(--lk-success); }
 .lk-badge--danger { background: var(--lk-danger-soft); color: var(--lk-danger); }
 .dday { min-height: 1.5rem; padding: 0 8px; border-radius: 6px; background: var(--lk-accent-soft); color: var(--lk-accent); font-size: 0.8125rem; font-weight: 700; }
+.dday--soon { background: var(--lk-point); color: var(--lk-point-ink); }
 .tag { min-height: 1.75rem; padding: 0 10px; gap: 4px; border-radius: 999px; background: var(--lk-surface-strong); color: var(--lk-text-secondary); font-size: 0.8125rem; font-weight: 500; }
 .tag .lk-icon { color: var(--lk-text-muted); }
 .notice { border-radius: 8px; }
@@ -86,7 +90,7 @@ textarea.lk-input { min-height: 8rem; }
 .lk-nav { gap: 2rem; align-self: stretch; }
 .lk-nav a { align-self: stretch; min-height: 0; font-size: 0.9375rem; font-weight: 600; color: var(--lk-text-muted); }
 .lk-nav a[aria-current] { color: var(--lk-text); font-weight: 600; }
-.lk-nav a[aria-current]::after { left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 0; background: var(--lk-text); }
+.lk-nav a[aria-current]::after { left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--lk-point); }
 @media (hover: hover) and (pointer: fine) { .lk-nav a:hover { color: var(--lk-text); } }
 .account-btn { border-color: var(--lk-border); border-radius: 999px; padding: 4px 10px 4px 4px; }
 .account-btn[aria-expanded='true'] { border-color: var(--lk-text); box-shadow: var(--lk-shadow-float); }
@@ -103,13 +107,16 @@ body.is-home .lk-main > .lk-container { width: 100%; max-width: none; }
 .lk-panel { border: 1px solid var(--lk-border); border-radius: 14px; box-shadow: none; }
 .back-link { color: var(--lk-text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .lk-empty, .empty-detail { color: var(--lk-text-muted); }
-.empty-icon { color: var(--lk-text-muted); background: var(--lk-surface-strong); }
+.empty-icon { color: var(--lk-point-ink); background: var(--lk-point-soft); }
 
 /* ---------- 홈 ---------- */
 .home-top { padding: 3rem 0 0; border-bottom: 1px solid var(--lk-border-soft); }
 .home-top .home-me { margin-bottom: 2rem; }
 .home-kicker { font-size: 0.9375rem; font-weight: 600; color: var(--lk-text-muted); }
 .home-title { margin-top: 8px; font-size: 2.5rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.03em; color: var(--lk-text); }
+/* '한곳에서' 아래 굵은 형광펜 밑줄(DEC-34). 글자 아래쪽 절반에 깔리고 글자는 위에 그대로 보인다 */
+.ink-mark { position: relative; isolation: isolate; white-space: nowrap; }
+.ink-mark::before { content: ''; position: absolute; z-index: -1; left: -0.07em; right: -0.09em; bottom: 0.03em; height: 0.62em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 40' preserveAspectRatio='none'%3E%3Cpath d='M6 15C40 9 90 12 140 9S215 8 233 11C238 15 237 25 232 31C190 34 140 31 95 34S30 36 9 33C3 28 2 20 6 15Z' fill='%23FFC93D'/%3E%3Cpath d='M14 21C70 18 150 20 226 17' fill='none' stroke='%23fff' stroke-opacity='.3' stroke-width='1.6' stroke-linecap='round'/%3E%3Cpath d='M18 28C80 26 160 28 222 25' fill='none' stroke='%23fff' stroke-opacity='.22' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
 .search-pill { margin-top: 1.75rem; display: flex; align-items: center; gap: 8px; max-width: 46rem; min-height: 4rem; padding: 8px 8px 8px 32px; border: 1px solid var(--lk-border); border-radius: 999px; background: #fff; box-shadow: var(--lk-shadow-float); }
 .search-pill:focus-within { border-color: var(--lk-text); }
 .search-pill__field { flex: 1; display: grid; gap: 2px; min-width: 0; cursor: text; }
@@ -125,7 +132,7 @@ body.is-home .lk-main > .lk-container { width: 100%; max-width: none; }
 .cat-strip ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 2rem; }
 .cat-strip a { display: grid; justify-items: center; gap: 8px; min-width: 56px; padding: 6px 0 14px; border-bottom: 2px solid transparent; color: var(--lk-text-muted); font-size: 0.8125rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: color 0.15s ease, border-color 0.15s ease; }
 .cat-strip a .lk-icon { width: 24px; height: 24px; }
-@media (hover: hover) and (pointer: fine) { .cat-strip a:hover { color: var(--lk-text); border-bottom-color: var(--lk-border); } }
+@media (hover: hover) and (pointer: fine) { .cat-strip a:hover { color: var(--lk-text); border-bottom-color: var(--lk-point); } }
 
 .home-sec { padding: 4rem 0; }
 .home-sec + .home-sec { border-top: 1px solid var(--lk-border-soft); }
@@ -160,7 +167,7 @@ body.is-home .lk-main > .lk-container { width: 100%; max-width: none; }
 
 .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; }
 .steps li { display: grid; align-content: start; gap: 8px; padding-top: 0; border-top: 0; }
-.steps__num { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--lk-text); color: var(--lk-text); font-size: 0.875rem; font-weight: 700; }
+.steps__num { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; border: 0; background: var(--lk-point); color: var(--lk-point-ink); font-size: 0.875rem; font-weight: 700; }
 .steps h3, .lab-guide__steps h3 { margin-top: 4px; font-size: 1.0625rem; font-weight: 700; letter-spacing: -0.01em; color: var(--lk-text); }
 .steps p, .lab-guide__steps p { color: var(--lk-text-muted); font-size: 0.9375rem; line-height: 1.6; }
 .home-sec .section-actions { margin-top: 2rem; }
